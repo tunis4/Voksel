@@ -1,0 +1,5 @@
+build/
+.vscode/
+compile_flags.txt
+voksel
+voksel.exe
