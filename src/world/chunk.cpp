@@ -7,7 +7,7 @@ Chunk::Chunk() {
         for (i32 y = 0; y < size; y++) {
             for (i32 z = 0; z < size; z++) {
                 BlockNID *nid = __get_block_at(x, y, z);
-                *nid = 1;
+                *nid = y == 0 ? 1 : 0;
             }
         }
     }

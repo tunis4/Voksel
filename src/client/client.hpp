@@ -1,15 +1,16 @@
 #pragma once
 
 #include "window.hpp"
-#include "gl/shader.hpp"
+#include "renderer.hpp"
 #include "../world/world.hpp"
-#include "../scripting/script_engine.hpp"
 
 class Client {
     Window *m_window;
-    Shader *m_shader;
-    ScriptEngine *m_script_engine;
+    Renderer *m_renderer;
+    Camera *m_camera;
     World *m_world;
+    
+    f64 m_delta_time, m_last_frame;
 
 public:
     Client();

@@ -9,12 +9,10 @@
 #include <imgui/imgui_impl_opengl3.h>
 
 Client::Client() {
-    m_script_engine = new ScriptEngine();
-
-    m_window = new Window(800, 600, "Voksel");
+    m_window = new Window(1280, 720, "Voksel");
     m_window->vsync(true);
 
-    if (!gladLoadGLLoader(m_window->get_loadproc())) {
+    if (!gladLoadGLLoader(m_window->loadproc())) {
         throw std::runtime_error("Failed to initialize GLAD");
     }
 
@@ -22,17 +20,21 @@ Client::Client() {
         glViewport(0, 0, width, height);
     });
 
-    glEnable(GL_FRAMEBUFFER_SRGB);
+    m_camera = new Camera(glm::vec3(0, 0, -2));
+
+    m_window->set_cursor_pos_callback([&] (f64 x, f64 y) {
+        m_camera->process_mouse_movement(x, y);
+    });
+
+    m_renderer = new Renderer(m_window, m_camera);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(m_window->get_glfw_window(), true);
+    ImGui_ImplGlfw_InitForOpenGL(m_window->glfw_window(), true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
-
-    m_script_engine->run_script("content/base/scripts/main.lua");
 
     m_world = new World();
     std::cout << m_world->get_block_at(glm::i32vec3(300, 42, 54)) << std::endl;
@@ -47,7 +49,11 @@ Client::~Client() {
 }
 
 void Client::loop() {
-    m_window->loop([&] {
+    m_window->loop([this] {
+        f64 current_frame = glfwGetTime();
+        m_delta_time = current_frame - m_last_frame;
+        m_last_frame = current_frame;
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -59,8 +65,7 @@ void Client::loop() {
 
         process_input();
 
-        glClearColor(powf(0.53, 2.2), powf(0.81, 2.2), powf(0.98, 2.2), 1);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+        m_renderer->render();
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     });

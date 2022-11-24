@@ -8,12 +8,13 @@
 #include "../../util.hpp"
 
 class Shader {
-    usize m_id;
+    uint m_id;
 
     void check_compile_errors(uint shader, std::string type);
 
 public:
     Shader(const std::filesystem::path &vertex_path, const std::filesystem::path &fragment_path);
+    ~Shader();
 
     void use();
 

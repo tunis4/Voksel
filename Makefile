@@ -1,16 +1,16 @@
 CC = gcc
 CPP = g++
 STRIP = strip
-CFLAGS = -Ofast -g -Wstrict-aliasing -Ideps -Ideps/luajit-2.1 -DSOL_LUAJIT=1 
+CFLAGS = -Ofast -g -Wstrict-aliasing -Ideps
 CPPFLAGS = -std=gnu++20 -Wno-deprecated-enum-enum-conversion -DGLM_MESSAGES $(CFLAGS)
-LDFLAGS = -lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm -lluajit-5.1
+LDFLAGS = -lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
 BIN = voksel
 
 ifeq ($(CROSS), mingw-w64)
 	CC = x86_64-w64-mingw32-gcc
 	CPP = x86_64-w64-mingw32-g++
 	STRIP = x86_64-w64-mingw32-strip
-	LDFLAGS = -static -lglfw3 -lopengl32 -lgdi32 -luser32 -lkernel32 -lssp -lluajit
+	LDFLAGS = -static -lglfw3 -lopengl32 -lgdi32 -luser32 -lkernel32 -lssp
 	BIN = voksel.exe
 endif
 

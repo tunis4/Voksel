@@ -32,7 +32,10 @@ public:
     void close();
     void vsync(bool enabled);
 
-    bool is_cursor_enabled() const;
+    inline uint width() const { return m_width; }
+    inline uint height() const { return m_height; }
+
+    inline bool is_cursor_enabled() const { return m_cursor_enabled; }
     void enable_cursor();
     void disable_cursor();
     void toggle_cursor();
@@ -40,8 +43,8 @@ public:
     bool is_key_pressed(int glfw_key);
     bool is_mouse_button_pressed(int glfw_mouse_button);
 
-    GLFWwindow* get_glfw_window();
-    GLADloadproc get_loadproc();
+    inline GLFWwindow* glfw_window() const { return m_window; }
+    GLADloadproc loadproc();
 
     void set_framebuffer_size_callback(std::function<void(uint width, uint height)> callback);
     void set_cursor_pos_callback(std::function<void(f64 x, f64 y)> callback);

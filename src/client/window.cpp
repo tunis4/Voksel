@@ -11,12 +11,14 @@ Window::Window(int window_width, int window_height, std::string window_title) {
 
     window_singleton = this;
 
+    m_width = window_width;
+    m_height = window_height;
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_SAMPLES, 4);
     
     m_window = glfwCreateWindow(window_width, window_height, window_title.c_str(), NULL, NULL);
     if (!m_window) {
@@ -33,6 +35,8 @@ Window::~Window() {
 void Window::set_framebuffer_size_callback(std::function<void(uint width, uint height)> callback) {
     m_framebuffer_size_callback = callback;
     glfwSetFramebufferSizeCallback(m_window, [] (GLFWwindow *_, int width, int height) {
+        window_singleton->m_width = width;
+        window_singleton->m_height = height;
         window_singleton->m_framebuffer_size_callback(static_cast<uint>(width), static_cast<uint>(height));
     });
 }
@@ -50,10 +54,6 @@ void Window::close() {
 
 void Window::vsync(bool enabled) {
     glfwSwapInterval(enabled);
-}
-
-bool Window::is_cursor_enabled() const {
-    return m_cursor_enabled;
 }
 
 void Window::enable_cursor() {
@@ -79,11 +79,7 @@ bool Window::is_mouse_button_pressed(int glfw_mouse_button) {
     return glfwGetMouseButton(m_window, glfw_mouse_button) == GLFW_PRESS;
 }
 
-GLFWwindow* Window::get_glfw_window() {
-    return m_window;
-}
-
-GLADloadproc Window::get_loadproc() {
+GLADloadproc Window::loadproc() {
     glfwMakeContextCurrent(m_window);
     return (GLADloadproc)glfwGetProcAddress;
 }

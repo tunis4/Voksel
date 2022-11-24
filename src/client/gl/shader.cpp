@@ -54,6 +54,10 @@ Shader::Shader(const std::filesystem::path &vertex_path, const std::filesystem::
     glDeleteShader(fragment);
 }
 
+Shader::~Shader() {
+    glDeleteProgram(m_id);
+}
+
 void Shader::use() {
     glUseProgram(m_id);
 }
