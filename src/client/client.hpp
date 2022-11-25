@@ -8,6 +8,7 @@ class Client {
     Window *m_window;
     Renderer *m_renderer;
     World *m_world;
+    Camera *m_camera;
     
     f64 m_delta_time, m_last_frame;
 

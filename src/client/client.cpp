@@ -1,8 +1,5 @@
 #include "client.hpp"
 
-#include <filesystem>
-#include <iostream>
-#include <cmath>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -26,7 +23,8 @@ Client::Client() {
             m_renderer->on_cursor_move(x, y);
     });
 
-    m_renderer = new Renderer(m_window);
+    m_camera = new Camera(glm::vec3(0, 0, -2));
+    m_renderer = new Renderer(m_window, m_camera);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -82,4 +80,23 @@ void Client::process_input() {
             tab_locked = true;
         }
     } else tab_locked = false;
+
+    static bool f_locked = false;
+    if (m_window->is_key_pressed(GLFW_KEY_F)) {
+        if (!f_locked) {
+            m_camera->set_free(!m_camera->is_free());
+            f_locked = true;
+        }
+    } else f_locked = false;
+
+    if (m_camera->is_free()) {
+        if (m_window->is_key_pressed(GLFW_KEY_W))
+            m_camera->process_free_movement(MovementDirection::FORWARD, m_delta_time);
+        if (m_window->is_key_pressed(GLFW_KEY_A))
+            m_camera->process_free_movement(MovementDirection::LEFT, m_delta_time);
+        if (m_window->is_key_pressed(GLFW_KEY_S))
+            m_camera->process_free_movement(MovementDirection::BACKWARD, m_delta_time);
+        if (m_window->is_key_pressed(GLFW_KEY_D))
+            m_camera->process_free_movement(MovementDirection::RIGHT, m_delta_time);
+    }
 }

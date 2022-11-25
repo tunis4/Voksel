@@ -1,6 +1,6 @@
 #include "renderer.hpp"
 
-Renderer::Renderer(Window *window) : m_window(window) {
+Renderer::Renderer(Window *window, Camera *camera) : m_window(window), m_camera(camera) {
     ScreenQuadVertex screen_quad_vertices[] = {
         // positions         tex coords
         {{ -1.0f, -1.0f }, { 0.0f, 0.0f }},
@@ -16,8 +16,6 @@ Renderer::Renderer(Window *window) : m_window(window) {
     m_screen_quad = new Mesh(screen_quad_vertices, screen_quad_indices, 4, 6);
     m_screen_shader = new Shader("res/shaders/screen.vs.glsl", "res/shaders/screen.fs.glsl");
     m_framebuffer = new Framebuffer(window->width(), window->height());
-
-    m_camera = new Camera(glm::vec3(0, 0, -2));
 
     m_selection_box = new SelectionBox();
 }

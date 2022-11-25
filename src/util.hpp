@@ -26,6 +26,14 @@ using uptr = uintptr_t;
 using f32 = float;
 using f64 = double;
 
+enum class Direction {
+    NORTH, SOUTH, WEST, EAST
+};
+
+enum class MovementDirection {
+    FORWARD, BACKWARD, LEFT, RIGHT
+};
+
 template<std::signed_integral T>
 inline constexpr std::pair<T, T> signed_int_divide(T x, T divisor) {
     T d = x / divisor;

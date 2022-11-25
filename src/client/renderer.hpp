@@ -29,7 +29,7 @@ class Renderer {
     SelectionBox *m_selection_box;
     
 public:
-    Renderer(Window *window);
+    Renderer(Window *window, Camera *camera);
     ~Renderer();
 
     void render();
