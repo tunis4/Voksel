@@ -29,8 +29,11 @@ class Renderer {
     SelectionBox *m_selection_box;
     
 public:
-    Renderer(Window *window, Camera *camera);
+    Renderer(Window *window);
     ~Renderer();
 
     void render();
+
+    void on_framebuffer_resize(uint width, uint height);
+    void on_cursor_move(f64 x, f64 y);
 };

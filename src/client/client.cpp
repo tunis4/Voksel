@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <iostream>
 #include <cmath>
-#include <stdexcept>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -11,6 +10,7 @@
 Client::Client() {
     m_window = new Window(1280, 720, "Voksel");
     m_window->vsync(true);
+    m_window->disable_cursor();
 
     if (!gladLoadGLLoader(m_window->loadproc())) {
         throw std::runtime_error("Failed to initialize GLAD");
@@ -18,15 +18,15 @@ Client::Client() {
 
     m_window->set_framebuffer_size_callback([&] (uint width, uint height) {
         glViewport(0, 0, width, height);
+        m_renderer->on_framebuffer_resize(width, height);
     });
-
-    m_camera = new Camera(glm::vec3(0, 0, -2));
 
     m_window->set_cursor_pos_callback([&] (f64 x, f64 y) {
-        m_camera->process_mouse_movement(x, y);
+        if (!m_window->is_cursor_enabled())
+            m_renderer->on_cursor_move(x, y);
     });
 
-    m_renderer = new Renderer(m_window, m_camera);
+    m_renderer = new Renderer(m_window);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -74,4 +74,12 @@ void Client::loop() {
 void Client::process_input() {
     if (m_window->is_key_pressed(GLFW_KEY_ESCAPE))
         m_window->close();
+    
+    static bool tab_locked = false;
+    if (m_window->is_key_pressed(GLFW_KEY_TAB)) {
+        if (!tab_locked) {
+            m_window->toggle_cursor();
+            tab_locked = true;
+        }
+    } else tab_locked = false;
 }

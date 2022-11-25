@@ -32,7 +32,7 @@ void SelectionBox::render(Camera *camera) {
     m_shader->use();
     m_shader->set_vec4("color", glm::vec4(0, 0, 0, 1));
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0, 0, 0));
+    model = glm::translate(model, glm::vec3(-1.5, -1.5, -5));
     m_shader->set_mat4("model", model);
     m_shader->set_mat4("view", camera->m_view_matrix);
     m_shader->set_mat4("projection", camera->m_projection_matrix);

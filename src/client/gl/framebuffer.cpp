@@ -1,12 +1,8 @@
 #include "framebuffer.hpp"
 
 #include <glad/glad.h>
-#include <stdexcept>
 
-Framebuffer::Framebuffer(uint window_width, uint window_height) {
-    m_width = window_width;
-    m_height = window_height;
-
+Framebuffer::Framebuffer(uint width, uint height) : m_width(width), m_height(height) {
     glGenFramebuffers(1, &m_id);
     bind();
 
@@ -43,4 +39,23 @@ void Framebuffer::unbind() {
 
 void Framebuffer::bind_color_buffer() {
     glBindTexture(GL_TEXTURE_2D, m_color_buffer);
+}
+
+void Framebuffer::resize(uint width, uint height) {
+    m_width = width;
+    m_height = height;
+    glDeleteFramebuffers(1, &m_id);
+
+    glGenFramebuffers(1, &m_id);
+    bind();
+    
+    glBindTexture(GL_TEXTURE_2D, m_color_buffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_width, m_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_color_buffer, 0);
+    
+    glBindRenderbuffer(GL_RENDERBUFFER, m_renderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_width, m_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_renderbuffer);
+
+    unbind();
 }

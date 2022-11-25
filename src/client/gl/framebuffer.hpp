@@ -9,10 +9,11 @@ class Framebuffer {
     uint m_width, m_height;
 
 public:
-    Framebuffer(uint window_width, uint window_height);
+    Framebuffer(uint width, uint height);
     ~Framebuffer();
     
     void bind();
     static void unbind();
     void bind_color_buffer();
+    void resize(uint width, uint height);
 };
