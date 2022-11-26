@@ -17,6 +17,7 @@ Renderer::Renderer(Window *window, Camera *camera) : m_window(window), m_camera(
     m_screen_shader = new Shader("res/shaders/screen.vs.glsl", "res/shaders/screen.fs.glsl");
     m_framebuffer = new Framebuffer(window->width(), window->height());
 
+    m_sky = new Sky();
     m_selection_box = new SelectionBox();
 }
 
@@ -28,11 +29,13 @@ void Renderer::render() {
     m_framebuffer->bind();
     glEnable(GL_DEPTH_TEST);
 
-    glClearColor(powf(0.53, 2.2), powf(0.81, 2.2), powf(0.98, 2.2), 1);
+    glClearColor(0 / 255.0f, 197 / 255.0f, 255 / 255.0f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_camera->update_matrices(m_window->width(), m_window->height());
     
+    m_sky->render(m_camera);
+
     m_selection_box->render(m_camera);
 
     Framebuffer::unbind();

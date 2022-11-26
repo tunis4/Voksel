@@ -2,6 +2,7 @@
 
 #include "../gl/mesh.hpp"
 #include "../gl/shader.hpp"
+#include "../camera.hpp"
 
 class Sky {
     struct PlaneVertex {
@@ -20,5 +21,5 @@ public:
     Sky();
     ~Sky();
     
-    void render();
+    void render(Camera *camera);
 };

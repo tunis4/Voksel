@@ -24,6 +24,7 @@ Client::Client() {
     });
 
     m_camera = new Camera(glm::vec3(0, 0, -2));
+    m_camera->set_free(true);
     m_renderer = new Renderer(m_window, m_camera);
 
     IMGUI_CHECKVERSION();

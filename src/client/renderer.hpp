@@ -6,6 +6,7 @@
 #include "window.hpp"
 #include "camera.hpp"
 #include "selection_box.hpp"
+#include "world/sky.hpp"
 
 struct ScreenQuadVertex {
     glm::vec2 pos;
@@ -26,6 +27,7 @@ class Renderer {
     Shader *m_screen_shader;
     Camera *m_camera;
 
+    Sky *m_sky;
     SelectionBox *m_selection_box;
     
 public:
