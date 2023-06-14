@@ -2,50 +2,45 @@
 
 #include <string>
 #include <functional>
-#include <glad/glad.h>
+#define GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "../util.hpp"
+#include "../util/util.hpp"
 
-// Singleton
-class Window {
-    GLFWwindow *m_window;
-    uint m_width, m_height;
-    bool m_cursor_enabled;
+namespace client {
+    // Singleton
+    class Window {
+        GLFWwindow *m_window;
+        uint m_width, m_height;
+        bool m_cursor_enabled;
 
-    std::function<void(uint width, uint height)> m_framebuffer_size_callback;
-    std::function<void(f64 x, f64 y)> m_cursor_pos_callback;
+        std::function<void(uint width, uint height)> m_framebuffer_size_callback;
+        std::function<void(f64 x, f64 y)> m_cursor_pos_callback;
 
-public:
-    Window(int window_width, int window_height, std::string window_title);
-    ~Window();
+    public:
+        Window(int window_width, int window_height, std::string window_title);
+        ~Window();
 
-    template<typename F>
-    void loop(F f) {
-        while (!glfwWindowShouldClose(m_window)) {
-            f();
-            glfwSwapBuffers(m_window);
-            glfwPollEvents();
-        }
-    }
+        static Window* get();
 
-    void close();
-    void vsync(bool enabled);
+        void close();
 
-    inline uint width() const { return m_width; }
-    inline uint height() const { return m_height; }
+        inline uint width() const { return m_width; }
+        inline uint height() const { return m_height; }
 
-    inline bool is_cursor_enabled() const { return m_cursor_enabled; }
-    void enable_cursor();
-    void disable_cursor();
-    void toggle_cursor();
+        inline bool is_cursor_enabled() const { return m_cursor_enabled; }
+        void enable_cursor();
+        void disable_cursor();
+        void toggle_cursor();
 
-    bool is_key_pressed(int glfw_key);
-    bool is_mouse_button_pressed(int glfw_mouse_button);
+        bool is_key_pressed(int glfw_key);
+        bool is_mouse_button_pressed(int glfw_mouse_button);
 
-    inline GLFWwindow* glfw_window() const { return m_window; }
-    GLADloadproc loadproc();
+        inline GLFWwindow* glfw_window() const { return m_window; }
+        inline bool should_close() const { return glfwWindowShouldClose(m_window); }
 
-    void set_framebuffer_size_callback(std::function<void(uint width, uint height)> callback);
-    void set_cursor_pos_callback(std::function<void(f64 x, f64 y)> callback);
-};
+        void set_framebuffer_size_callback(std::function<void(uint width, uint height)> callback);
+        void set_cursor_pos_callback(std::function<void(f64 x, f64 y)> callback);
+    };
+}

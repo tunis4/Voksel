@@ -2,13 +2,23 @@
 
 #include <string>
 
-#include "../util.hpp"
+#include "../util/util.hpp"
 
-using BlockNID = u32;
+namespace block {
+    using NID = u32; // block numerical id
+    struct BlockData {
+        std::string m_id;
 
-class Block {
-    std::string m_id;
+        // texture layers
+        u32 m_top_tex_layer, m_bottom_tex_layer, m_north_tex_layer, m_south_tex_layer, m_west_tex_layer, m_east_tex_layer;
 
-public:
-    Block(std::string id);
-};
+        BlockData(std::string id);
+        
+        inline void set_textures(u32 all_faces) { set_textures(all_faces, all_faces, all_faces, all_faces, all_faces, all_faces); }
+        inline void set_textures(u32 top_face, u32 bottom_face, u32 side_faces) { set_textures(top_face, bottom_face, side_faces, side_faces, side_faces, side_faces); }
+        void set_textures(u32 top_face, u32 bottom_face, u32 north_face, u32 south_face, u32 west_face, u32 east_face);
+    };
+
+    BlockData* get_block_data(NID nid);
+    void register_blocks();
+}

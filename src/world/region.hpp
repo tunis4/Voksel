@@ -4,7 +4,7 @@
 
 class Region {
 public:
-    static constexpr i32 size = 16; 
+    static constexpr i32 size = 8;
     static constexpr i32 volume = size * size * size;
 
     Region();

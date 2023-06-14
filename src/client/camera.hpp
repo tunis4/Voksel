@@ -3,43 +3,49 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../util.hpp"
+#include "../util/util.hpp"
 
-class Camera {
-public:
-    glm::vec3 m_pos;
-    glm::vec3 m_front;
-    glm::vec3 m_up;
-    glm::vec3 m_right;
-    glm::vec3 m_world_up;
+namespace client {
+    class Camera {
+    public:
+        static constexpr f32 slow_free_speed = 5;
+        static constexpr f32 normal_free_speed = 10;
+        static constexpr f32 fast_free_speed = 20;
 
-    bool m_free_cam = false;
-    glm::vec3 m_free_pos;
-    f32 m_free_speed;
+        glm::vec3 m_pos;
+        glm::vec3 m_front;
+        glm::vec3 m_up;
+        glm::vec3 m_right;
+        glm::vec3 m_world_up;
 
-    f32 m_yaw, m_pitch;
+        bool m_free_cam = false;
+        glm::vec3 m_free_pos;
+        f32 m_free_speed;
 
-    f32 m_mouse_sensitivity;
-    f32 m_zoom;
+        f32 m_yaw, m_pitch;
 
-    glm::mat4 m_projection_matrix;
-    glm::mat4 m_view_matrix;
+        f32 m_mouse_sensitivity;
+        f32 m_fov;
 
-    // variables for handling mouse movement
-    f32 m_last_x, m_last_y;
-    bool m_first_mouse = true;
+        glm::mat4 m_projection_matrix;
+        glm::mat4 m_view_matrix;
 
-    explicit Camera(glm::vec3 position);
+        // variables for handling mouse movement
+        f32 m_last_x, m_last_y;
+        bool m_first_mouse = true;
 
-    void update_matrices(usize window_width, usize window_height);
-    void process_mouse_movement(f32 mouse_x, f32 mouse_y);
-    void process_free_movement(MovementDirection direction, f32 delta_time);
+        explicit Camera(glm::vec3 position);
 
-    inline bool is_free() { return m_free_cam; }
-    void set_free(bool free);
+        void update_matrices(usize window_width, usize window_height);
+        void process_mouse_movement(f32 mouse_x, f32 mouse_y);
+        void process_free_movement(util::MovementDirection direction, f32 delta_time);
 
-    inline glm::vec3 pos() { return !m_free_cam ? m_pos : m_free_pos; }
+        inline bool is_free() { return m_free_cam; }
+        void set_free(bool free);
 
-private:
-    void update_vectors();
-};
+        inline glm::vec3 pos() { return !m_free_cam ? m_pos : m_free_pos; }
+
+    private:
+        void update_vectors();
+    };
+}
