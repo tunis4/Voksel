@@ -11,7 +11,7 @@ namespace render {
         VmaAllocationCreateInfo alloc_create_info {};
         alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO;
         alloc_create_info.flags = alloc_flags;
-
+        
         CHECK_VK(vmaCreateBuffer(allocator, &buffer_info, &alloc_create_info, buffer, allocation, alloc_info));
     }
     

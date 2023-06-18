@@ -53,6 +53,11 @@ namespace util {
         return std::make_pair(glm::i32vec3(xd, yd, zd), glm::i32vec3(xr, yr, zr));
     }
 
+    inline constexpr i32 i32vec3_distance_squared(glm::i32vec3 a, glm::i32vec3 b) {
+        glm::i32vec3 d = a - b;
+        return d.x * d.x + d.y * d.y + d.z * d.z;
+    }
+
     template<usize size, std::integral T>
     inline constexpr T coords_to_index(T x, T y, T z) {
         return y * size * size + z * size + x;

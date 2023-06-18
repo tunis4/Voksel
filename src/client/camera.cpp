@@ -14,7 +14,7 @@ namespace client {
 
     void Camera::update_matrices(usize window_width, usize window_height) {
         m_view_matrix = glm::lookAt(pos(), pos() + m_front, m_up);
-        m_projection_matrix = glm::perspective(glm::radians(m_fov), (f32)window_width / (f32)window_height, 0.01f, 1000.0f);
+        m_projection_matrix = glm::perspective(glm::radians(m_fov), (f32)window_width / (f32)window_height, 0.01f, 5000.0f);
     }
 
     void Camera::process_mouse_movement(f32 mouse_x, f32 mouse_y) {
@@ -71,5 +71,71 @@ namespace client {
         if (!m_free_cam && free)
             m_free_pos = m_pos;
         m_free_cam = free;
+    }
+
+    void Camera::Frustum::update(glm::mat4 projview) {
+        glm::mat4 m = projview;
+        m = glm::transpose(m);
+        m_planes[LEFT]   = m[3] + m[0];
+        m_planes[RIGHT]  = m[3] - m[0];
+        m_planes[BOTTOM] = m[3] + m[1];
+        m_planes[TOP]    = m[3] - m[1];
+        m_planes[NEAR]   = m[3] + m[2];
+        m_planes[FAR]    = m[3] - m[2];
+
+        glm::vec3 crosses[COMBINATIONS] = {
+            glm::cross(glm::vec3(m_planes[LEFT]),   glm::vec3(m_planes[RIGHT])),
+            glm::cross(glm::vec3(m_planes[LEFT]),   glm::vec3(m_planes[BOTTOM])),
+            glm::cross(glm::vec3(m_planes[LEFT]),   glm::vec3(m_planes[TOP])),
+            glm::cross(glm::vec3(m_planes[LEFT]),   glm::vec3(m_planes[NEAR])),
+            glm::cross(glm::vec3(m_planes[LEFT]),   glm::vec3(m_planes[FAR])),
+            glm::cross(glm::vec3(m_planes[RIGHT]),  glm::vec3(m_planes[BOTTOM])),
+            glm::cross(glm::vec3(m_planes[RIGHT]),  glm::vec3(m_planes[TOP])),
+            glm::cross(glm::vec3(m_planes[RIGHT]),  glm::vec3(m_planes[NEAR])),
+            glm::cross(glm::vec3(m_planes[RIGHT]),  glm::vec3(m_planes[FAR])),
+            glm::cross(glm::vec3(m_planes[BOTTOM]), glm::vec3(m_planes[TOP])),
+            glm::cross(glm::vec3(m_planes[BOTTOM]), glm::vec3(m_planes[NEAR])),
+            glm::cross(glm::vec3(m_planes[BOTTOM]), glm::vec3(m_planes[FAR])),
+            glm::cross(glm::vec3(m_planes[TOP]),    glm::vec3(m_planes[NEAR])),
+            glm::cross(glm::vec3(m_planes[TOP]),    glm::vec3(m_planes[FAR])),
+            glm::cross(glm::vec3(m_planes[NEAR]),   glm::vec3(m_planes[FAR]))
+        };
+
+        m_points[0] = intersection<LEFT,  BOTTOM, NEAR>(crosses);
+        m_points[1] = intersection<LEFT,  TOP,    NEAR>(crosses);
+        m_points[2] = intersection<RIGHT, BOTTOM, NEAR>(crosses);
+        m_points[3] = intersection<RIGHT, TOP,    NEAR>(crosses);
+        m_points[4] = intersection<LEFT,  BOTTOM, FAR>(crosses);
+        m_points[5] = intersection<LEFT,  TOP,    FAR>(crosses);
+        m_points[6] = intersection<RIGHT, BOTTOM, FAR>(crosses);
+        m_points[7] = intersection<RIGHT, TOP,    FAR>(crosses);
+    }
+    
+    bool Camera::Frustum::is_box_visible(const glm::vec3 &min, const glm::vec3 &max) const {
+        // check box outside/inside of frustum
+        for (int i = 0; i < COUNT; i++) {
+            if ((glm::dot(m_planes[i], glm::vec4(min.x, min.y, min.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(max.x, min.y, min.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(min.x, max.y, min.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(max.x, max.y, min.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(min.x, min.y, max.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(max.x, min.y, max.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(min.x, max.y, max.z, 1.0f)) < 0.0) &&
+                (glm::dot(m_planes[i], glm::vec4(max.x, max.y, max.z, 1.0f)) < 0.0))
+            {
+                return false;
+            }
+        }
+
+        // check frustum outside/inside box
+        int out;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].x > max.x) ? 1 : 0); if (out == 8) return false;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].x < min.x) ? 1 : 0); if (out == 8) return false;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].y > max.y) ? 1 : 0); if (out == 8) return false;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].y < min.y) ? 1 : 0); if (out == 8) return false;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].z > max.z) ? 1 : 0); if (out == 8) return false;
+        out = 0; for (int i = 0; i < 8; i++) out += ((m_points[i].z < min.z) ? 1 : 0); if (out == 8) return false;
+
+        return true;
     }
 }

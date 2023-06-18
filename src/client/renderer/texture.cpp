@@ -19,11 +19,13 @@ namespace render {
     });
 
     void Texture::init() {
-        m_texture_width = 16;
-        m_texture_height = 16;
-        m_texture_layers = texture_names.size();
+        m_width = 16;
+        m_height = 16;
+        m_layers = texture_names.size();
+        m_mip_levels = std::floor(std::log2(std::max(m_width, m_height))) + 1;
 
-        VkDeviceSize image_size = m_texture_width * m_texture_height * m_texture_layers * 4;
+        VkDeviceSize single_size = m_width * m_height * 4;
+        VkDeviceSize image_size = single_size * m_layers;
         VkBuffer staging_buffer;
         VmaAllocation staging_buffer_allocation;
 
@@ -38,12 +40,12 @@ namespace render {
 
             if (!pixels)
                 throw std::runtime_error("Failed to load texture");
-            if (width != m_texture_width || height != m_texture_height)
+            if (width != (int)m_width || height != (int)m_height)
                 throw std::runtime_error("Texture has incorrect dimensions");
             
-            std::memcpy(mapped_data, pixels, image_size);
+            std::memcpy(mapped_data, pixels, single_size);
             stbi_image_free(pixels);
-            mapped_data += m_texture_width * m_texture_height * 4;
+            mapped_data += single_size;
         }
 
         vmaUnmapMemory(m_context.allocator, staging_buffer_allocation);
@@ -63,7 +65,7 @@ namespace render {
         view_info.subresourceRange.baseMipLevel = 0;
         view_info.subresourceRange.levelCount = 1;
         view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = m_texture_layers;
+        view_info.subresourceRange.layerCount = m_layers;
         CHECK_VK(vkCreateImageView(m_context.device, &view_info, nullptr, &m_image_view));
 
         VkSamplerCreateInfo sampler_info {};
@@ -92,11 +94,11 @@ namespace render {
         VkImageCreateInfo image_info {};
         image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         image_info.imageType = VK_IMAGE_TYPE_2D;
-        image_info.extent.width = m_texture_width;
-        image_info.extent.height = m_texture_height;
+        image_info.extent.width = m_width;
+        image_info.extent.height = m_height;
         image_info.extent.depth = 1;
         image_info.mipLevels = 1;
-        image_info.arrayLayers = m_texture_layers;
+        image_info.arrayLayers = m_layers;
         image_info.format = format;
         image_info.tiling = tiling;
         image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -125,10 +127,10 @@ namespace render {
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.subresourceRange.levelCount = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = m_texture_layers;
+        barrier.subresourceRange.layerCount = m_layers;
         
-        VkPipelineStageFlags src_stage;
-        VkPipelineStageFlags dst_stage;
+        VkPipelineStageFlags src_stage = 0;
+        VkPipelineStageFlags dst_stage = 0;
 
         if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
             barrier.srcAccessMask = 0;
@@ -157,7 +159,7 @@ namespace render {
         std::array<VkBufferImageCopy, texture_names.size()> copy_regions;
         for (u32 layer = 0; layer < copy_regions.size(); layer++) {
             auto &region = copy_regions[layer];
-            region.bufferOffset = m_texture_width * m_texture_height * 4 * layer;
+            region.bufferOffset = m_width * m_height * 4 * layer;
             region.bufferRowLength = 0;
             region.bufferImageHeight = 0;
 
@@ -167,7 +169,7 @@ namespace render {
             region.imageSubresource.layerCount = 1;
 
             region.imageOffset = { 0, 0, 0 };
-            region.imageExtent = { (u32)m_texture_width, (u32)m_texture_height, 1 };
+            region.imageExtent = { (u32)m_width, (u32)m_height, 1 };
         }
 
         vkCmdCopyBufferToImage(command_buffer, buffer, m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());

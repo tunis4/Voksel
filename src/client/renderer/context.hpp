@@ -1,10 +1,19 @@
 #pragma once
 
+#include <queue>
+
 #include "common.hpp"
 #include "swapchain.hpp"
 #include "../camera.hpp"
 
 namespace render {
+    struct BufferDeletion {
+        VkBuffer m_buffer;
+        VmaAllocation m_allocation;
+
+        BufferDeletion(VkBuffer buffer, VmaAllocation allocation) : m_buffer(buffer), m_allocation(allocation) {}
+    };
+
     struct Context {
         client::Window *window;
         client::Camera *camera;
@@ -21,6 +30,8 @@ namespace render {
 
         QueueManager queue_manager;
         Swapchain swapchain;
+
+        std::queue<BufferDeletion> buffer_deletions;
 
         Context() : swapchain(*this) {}
 

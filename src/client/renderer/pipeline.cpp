@@ -13,8 +13,8 @@ namespace render {
     }
 
     PipelineBuilder& PipelineBuilder::shaders(const std::string &vert_shader_name, const std::string &frag_shader_name) {
-        m_vert_shader_module = create_shader_module("res/shaders/" + vert_shader_name + ".vert.spv");
-        m_frag_shader_module = create_shader_module("res/shaders/" + frag_shader_name + ".frag.spv");
+        m_vert_shader_module = create_shader_module("res/shaders/build/" + vert_shader_name + ".vert.spv");
+        m_frag_shader_module = create_shader_module("res/shaders/build/" + frag_shader_name + ".frag.spv");
 
         VkPipelineShaderStageCreateInfo vert_shader_stage_info {};
         vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -146,7 +146,7 @@ namespace render {
         vkDestroyShaderModule(m_device, m_frag_shader_module, nullptr);
         vkDestroyShaderModule(m_device, m_vert_shader_module, nullptr);
         delete m_vertex_input_binding_description;
-        delete m_vertex_input_attribute_descriptions;
+        delete[] m_vertex_input_attribute_descriptions;
         
         return pipeline;
     }

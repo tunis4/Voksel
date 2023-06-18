@@ -9,7 +9,7 @@ namespace client {
     class Client {
         Window *m_window;
         render::Renderer *m_renderer;
-        World *m_world;
+        world::World *m_world;
         Camera *m_camera;
         
         f64 m_delta_time, m_last_frame;
@@ -20,7 +20,7 @@ namespace client {
 
         static Client* get();
 
-        inline World* world() const { return m_world; }
+        inline world::World* world() const { return m_world; }
 
         void loop();
         void process_input();

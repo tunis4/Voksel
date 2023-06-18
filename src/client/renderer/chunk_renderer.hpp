@@ -4,13 +4,12 @@
 #include "pipeline.hpp"
 #include "texture.hpp"
 #include "../../world/chunk.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace render {
     // structure that ties a chunk with information for rendering it. managed by the ChunkRenderer class
     struct ChunkRender {
         glm::i32vec3 m_chunk_pos;
-        Chunk *m_chunk;
+        world::Chunk *m_chunk;
 
         VkBuffer m_vertex_buffer;
         VmaAllocation m_vertex_buffer_allocation;
@@ -62,13 +61,19 @@ namespace render {
 
     class ChunkMeshBuilder;
     class ChunkRenderer {
-        struct alignas(16) UniformBuffer {
-            glm::mat4 view;
-            glm::mat4 projection;
+        struct UniformBuffer {
+            // for vertex shader
+            alignas(16) glm::mat4 view;
+            alignas(16) glm::mat4 projection;
+
+            // for fragment shader
+            alignas(16) glm::vec3 fog_color;
+            alignas( 4) f32 fog_near;
+            alignas( 4) f32 fog_far;
         };
 
-        struct alignas(16) PushConstants {
-            glm::mat4 model;
+        struct PushConstants {
+            alignas(16) glm::mat4 model;
         };
 
         struct PerFrame {
@@ -88,12 +93,16 @@ namespace render {
         Texture m_block_texture;
         ChunkMeshBuilder *m_mesh_builder;
 
+        glm::i32vec3 m_last_camera_pos;
+        std::vector<ChunkRender*> m_chunks_meshed;
+        std::vector<ChunkRender*> m_chunks_to_mesh; // must be sorted by distance
+
         ChunkRenderer(Context &context) : m_context(context), m_block_texture(context) {}
 
         void init();
         void cleanup();
-        void allocate_chunk_mesh(ChunkRender &chunk, const std::vector<ChunkVertex> &vertices, const std::vector<u32> &indices);
-        void delete_chunk_mesh(ChunkRender &chunk);
+        void allocate_chunk_mesh(ChunkRender *chunk, const std::vector<ChunkVertex> &vertices, const std::vector<u32> &indices);
+        void update();
         void record(VkCommandBuffer cmd, uint frame_index);
     };
 }

@@ -8,6 +8,7 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <vulkan/vulkan_core.h>
 #include "chunk_renderer.hpp"
+#include "common.hpp"
 #include "imgui_impl_voksel.hpp"
 
 namespace render {
@@ -457,6 +458,8 @@ namespace render {
 
             m_chunk_renderer->record(command_buffer, m_frame_index);
             
+            ImGui::End();
+            ImGui::Render();
             ImGui_ImplVoksel_RenderDrawData(ImGui::GetDrawData(), command_buffer);
         vkCmdEndRenderPass(command_buffer);
 
@@ -464,22 +467,21 @@ namespace render {
     }
 
     void Renderer::render() {
-        ImGui_ImplVoksel_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        static bool show_demo_window = false;
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-        
-        ImGui::Begin("voksel");
-        if (ImGui::Button("Show ImGui demo window"))
-            show_demo_window = !show_demo_window;
-        ImGui::End();
-
         PerFrame &frame = m_per_frame[m_frame_index];
+        
+        m_chunk_renderer->update();
 
-        vkWaitForFences(m_context.device, 1, &frame.m_in_flight_fence, true, UINT64_MAX);
+        if (!m_context.buffer_deletions.empty()) {
+            std::array<VkFence, MAX_FRAMES_IN_FLIGHT> in_flight_fences;
+            for (usize i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+                in_flight_fences[i] = m_per_frame[i].m_in_flight_fence;
+            vkWaitForFences(m_context.device, in_flight_fences.size(), in_flight_fences.data(), true, UINT64_MAX);
+            do {
+                auto &deletion = m_context.buffer_deletions.front();
+                vmaDestroyBuffer(m_context.allocator, deletion.m_buffer, deletion.m_allocation);
+                m_context.buffer_deletions.pop();
+            } while (!m_context.buffer_deletions.empty());
+        } else vkWaitForFences(m_context.device, 1, &frame.m_in_flight_fence, true, UINT64_MAX);
 
         u32 image_index;
         VkResult result = vkAcquireNextImageKHR(m_context.device, m_context.swapchain.m_swapchain, UINT64_MAX, frame.m_image_available_semaphore, VK_NULL_HANDLE, &image_index);
@@ -489,8 +491,6 @@ namespace render {
             return;
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swap chain image");
-        
-        ImGui::Render();
 
         vkResetFences(m_context.device, 1, &frame.m_in_flight_fence);
 
@@ -554,7 +554,6 @@ namespace render {
         vkDestroyRenderPass(device, m_context.render_pass, nullptr);
         m_context.swapchain.cleanup();
         vkDestroyDescriptorPool(device, m_context.descriptor_pool, nullptr);
-        vkDestroyDescriptorSetLayout(device, m_descriptor_set_layout, nullptr);
         vkDestroyDevice(device, nullptr);
 #ifdef ENABLE_VK_VALIDATION_LAYERS
         vkDestroyDebugUtilsMessengerEXT(m_context.instance, m_vk_debug_messenger, nullptr);

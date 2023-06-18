@@ -1,5 +1,5 @@
 build/
 .vscode/
-compile_flags.txt
-voksel
-voksel.exe
+.cache/
+imgui.ini
+x86_64-w64-mingw32.txt

@@ -11,9 +11,10 @@ namespace render {
         void copy_buffer_to_image(VkBuffer buffer);
 
     public:
-        usize m_texture_width;
-        usize m_texture_height;
-        usize m_texture_layers;
+        usize m_width;
+        usize m_height;
+        usize m_layers;
+        usize m_mip_levels;
 
         VkImage m_image;
         VmaAllocation m_image_allocation;

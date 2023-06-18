@@ -44,6 +44,40 @@ namespace client {
         void set_free(bool free);
 
         inline glm::vec3 pos() { return !m_free_cam ? m_pos : m_free_pos; }
+        inline glm::i32vec3 block_pos() { auto p = pos(); return glm::i32vec3(p.x / 2.0f, p.y / 2.0f, p.z / 2.0f); }
+
+        struct Frustum {
+            enum Planes {
+                LEFT = 0,
+                RIGHT,
+                BOTTOM,
+                TOP,
+                NEAR,
+                FAR,
+                COUNT,
+                COMBINATIONS = COUNT * (COUNT - 1) / 2
+            };
+
+            inline static constexpr int ij2k(Planes i, Planes j) {
+                return i * (9 - i) / 2 + j - 1;
+            } 
+
+            template<Planes a, Planes b, Planes c>
+            inline glm::vec3 intersection(const glm::vec3 *crosses) const {
+                float D = glm::dot(glm::vec3(m_planes[a]), crosses[ij2k(b, c)]);
+                glm::vec3 res = glm::mat3(crosses[ij2k(b, c)], -crosses[ij2k(a, c)], crosses[ij2k(a, b)]) *
+                    glm::vec3(m_planes[a].w, m_planes[b].w, m_planes[c].w);
+                return res * (-1.0f / D);
+            }
+            
+            glm::vec4 m_planes[COUNT];
+            glm::vec3 m_points[8];
+
+            void update(glm::mat4 projview);
+            bool is_box_visible(const glm::vec3 &min, const glm::vec3 &max) const;
+        };
+
+        Frustum m_frustum;
 
     private:
         void update_vectors();

@@ -35,7 +35,7 @@ namespace render {
     i64 ChunkMeshBuilder::build() {
         auto start = std::chrono::high_resolution_clock::now();
 
-        Chunk *neighbor_chunks[3 * 3 * 3];
+        world::Chunk *neighbor_chunks[3 * 3 * 3];
         for (i32 y = -1; y < 2; y++)
             for (i32 z = -1; z < 2; z++)
                 for (i32 x = -1; x < 2; x++)
@@ -50,9 +50,9 @@ namespace render {
 
         block::NID *current_block = &chunk->m_blocks[0];
 
-        for (usize y = 0; y < Chunk::size; y++) {
-            for (usize z = 0; z < Chunk::size; z++) {
-                for (usize x = 0; x < Chunk::size; x++) {
+        for (usize y = 0; y < world::Chunk::size; y++) {
+            for (usize z = 0; z < world::Chunk::size; z++) {
+                for (usize x = 0; x < world::Chunk::size; x++) {
                     if (*current_block == 0) { // guaranteed to be void
                         current_block++;
                         continue;
@@ -64,14 +64,14 @@ namespace render {
                         for (i32 ny = -1; ny < 2; ny++) {
                             for (i32 nz = -1; nz < 2; nz++) {
                                 i32 cx = 1, cy = 1, cz = 1, rx = x + nx, ry = y + ny, rz = z + nz;
-                                if (rx == -1) { cx = 0; rx = Chunk::size - 1; }
-                                else if (rx == Chunk::size) { cx = 2; rx = 0; }
-                                if (ry == -1) { cy = 0; ry = Chunk::size - 1; }
-                                else if (ry == Chunk::size) { cy = 2; ry = 0; }
-                                if (rz == -1) { cz = 0; rz = Chunk::size - 1; } 
-                                else if (rz == Chunk::size) { cz = 2; rz = 0; }
+                                if (rx == -1) { cx = 0; rx = world::Chunk::size - 1; }
+                                else if (rx == world::Chunk::size) { cx = 2; rx = 0; }
+                                if (ry == -1) { cy = 0; ry = world::Chunk::size - 1; }
+                                else if (ry == world::Chunk::size) { cy = 2; ry = 0; }
+                                if (rz == -1) { cz = 0; rz = world::Chunk::size - 1; } 
+                                else if (rz == world::Chunk::size) { cz = 2; rz = 0; }
                                 auto c = NC(cx, cy, cz);
-                                NB(nx + 1, ny + 1, nz + 1) = c->m_blocks[util::coords_to_index<Chunk::size>(rx, ry, rz)];
+                                NB(nx + 1, ny + 1, nz + 1) = c->m_blocks[util::coords_to_index<world::Chunk::size>(rx, ry, rz)];
                             }
                         }
                     }

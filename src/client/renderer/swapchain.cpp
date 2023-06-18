@@ -2,6 +2,7 @@
 #include "context.hpp"
 
 #include <algorithm>
+#include <vulkan/vulkan_core.h>
 
 namespace render {
     SwapchainSupportDetails Swapchain::query_support(VkPhysicalDevice physical_device, VkSurfaceKHR surface) {

@@ -14,21 +14,10 @@
 #endif
 
 namespace render {
-    struct alignas(16) UniformBuffer {
-        glm::mat4 view;
-        glm::mat4 projection;
-    };
-
-    struct alignas(16) PushConstants {
-        glm::mat4 model;
-    };
-
     class Renderer {
         Context m_context;
         
         bool m_framebuffer_resized;
-
-        VkDescriptorSetLayout m_descriptor_set_layout;
 
         struct PerFrame {
             VkCommandBuffer m_command_buffer;
