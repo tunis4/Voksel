@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <vulkan/vulkan.h>
-#include <vma/vk_mem_alloc.h>
 
+#include "common.hpp"
 #include "queue_manager.hpp"
 #include "../window.hpp"
 

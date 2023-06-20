@@ -1,6 +1,7 @@
-project('voksel', ['cpp', 'c'], default_options: ['optimization=3', 'cpp_std=gnu++20'])
+project('voksel', ['cpp', 'c'], default_options: ['cpp_std=gnu++20', 'cpp_rtti=false'])
 
 voksel_cpp_arguments = [
+  '-Ofast', '-g',
   '-DDEBUG',
   '-DGLM_FORCE_LEFT_HANDED',
   '-DGLM_FORCE_DEPTH_ZERO_TO_ONE',
@@ -20,6 +21,9 @@ voksel_source_files = [
   'deps/stb/stb_image.c',
 
   'deps/vma/vk_mem_alloc.cpp',
+
+# 'deps/PackedArray/PackedArray.c',
+  'deps/PackedArray/PackedArraySIMD.c',
 
 
   'src/main.cpp',
@@ -86,6 +90,7 @@ freetype2_dep = dependency('freetype2')
 cmake = import('cmake')
 fastnoise2_opt = cmake.subproject_options()
 fastnoise2_opt.add_cmake_defines({'FASTNOISE2_NOISETOOL': 'OFF', 'BUILD_SHARED_LIBS': 'ON'})
+fastnoise2_opt.set_override_option('cpp_rtti', 'true')
 fastnoise2_proj = cmake.subproject('FastNoise2', options: fastnoise2_opt)
 fastnoise2_dep = fastnoise2_proj.dependency('FastNoise')
 

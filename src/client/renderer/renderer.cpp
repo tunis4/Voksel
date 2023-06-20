@@ -10,6 +10,7 @@
 #include "chunk_renderer.hpp"
 #include "common.hpp"
 #include "imgui_impl_voksel.hpp"
+#include "vma/vk_mem_alloc.h"
 
 namespace render {
     Renderer::Renderer(client::Window *window, client::Camera *camera) {
@@ -434,7 +435,7 @@ namespace render {
         render_pass_info.renderArea.extent = m_context.swapchain.m_extent;
 
         std::array clear_values = std::to_array<VkClearValue>({
-            { .color = { 0.00143f, 0.35374f, 0.61868f, 1.0f } },
+            { .color = { { 0.00143f, 0.35374f, 0.61868f, 1.0f } } },
             { .depthStencil = { 1.0f, 0 } }
         });
 
@@ -537,6 +538,14 @@ namespace render {
         ImGui_ImplVoksel_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+
+        if (!m_context.buffer_deletions.empty()) {
+            do {
+                auto &deletion = m_context.buffer_deletions.front();
+                vmaDestroyBuffer(m_context.allocator, deletion.m_buffer, deletion.m_allocation);
+                m_context.buffer_deletions.pop();
+            } while (!m_context.buffer_deletions.empty());
+        }
         
         m_chunk_renderer->cleanup();
         delete m_chunk_renderer;
@@ -547,12 +556,11 @@ namespace render {
             vkDestroyFence(device, frame.m_in_flight_fence, nullptr);
         }
 
+        m_context.swapchain.cleanup();
         vmaDestroyAllocator(m_context.allocator);
-
         vkDestroyCommandPool(device, m_context.command_pool, nullptr);
         vkDestroyCommandPool(device, m_context.transient_command_pool, nullptr);
         vkDestroyRenderPass(device, m_context.render_pass, nullptr);
-        m_context.swapchain.cleanup();
         vkDestroyDescriptorPool(device, m_context.descriptor_pool, nullptr);
         vkDestroyDevice(device, nullptr);
 #ifdef ENABLE_VK_VALIDATION_LAYERS

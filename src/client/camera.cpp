@@ -14,7 +14,7 @@ namespace client {
 
     void Camera::update_matrices(usize window_width, usize window_height) {
         m_view_matrix = glm::lookAt(pos(), pos() + m_front, m_up);
-        m_projection_matrix = glm::perspective(glm::radians(m_fov), (f32)window_width / (f32)window_height, 0.01f, 5000.0f);
+        m_projection_matrix = glm::perspective(glm::radians(m_fov), (f32)window_width / (f32)window_height, 0.01f, 1000.0f);
     }
 
     void Camera::process_mouse_movement(f32 mouse_x, f32 mouse_y) {

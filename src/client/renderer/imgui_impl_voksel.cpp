@@ -595,8 +595,17 @@ void ImGui_ImplVoksel_Shutdown()
 
     // Manually delete main viewport render data in-case we haven't initialized for viewports
     ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-    if (ImGui_ImplVoksel_ViewportData* vd = (ImGui_ImplVoksel_ViewportData*)main_viewport->RendererUserData)
+    if (ImGui_ImplVoksel_ViewportData* vd = (ImGui_ImplVoksel_ViewportData*)main_viewport->RendererUserData) {
+        for (u32 i = 0; i < vd->RenderBuffers.Count; i++) {
+            auto render_buffer = vd->RenderBuffers.FrameRenderBuffers[i];
+            vkDestroyBuffer(bd->VulkanInitInfo.Context->device, render_buffer.VertexBuffer, nullptr);
+            vkFreeMemory(bd->VulkanInitInfo.Context->device, render_buffer.VertexBufferMemory, nullptr);
+            vkDestroyBuffer(bd->VulkanInitInfo.Context->device, render_buffer.IndexBuffer, nullptr);
+            vkFreeMemory(bd->VulkanInitInfo.Context->device, render_buffer.IndexBufferMemory, nullptr);
+        }
+        IM_DELETE(vd->RenderBuffers.FrameRenderBuffers);
         IM_DELETE(vd);
+    }
     main_viewport->RendererUserData = nullptr;
 
     io.BackendRendererName = nullptr;

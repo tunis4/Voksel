@@ -19,34 +19,9 @@ namespace world {
         m_max_smooth = FastNoise::New<FastNoise::MaxSmooth>();
         m_max_smooth->SetLHS(m_ridged_noise);
         m_max_smooth->SetRHS(m_fractal_noise);
-
-        // m_fractal_noise = FastNoise::New<FastNoise::FractalFBm>();
-        // m_fractal_noise->SetSource(m_simplex_noise);
-        // m_fractal_noise->SetOctaveCount(3);
-
-        // m_flat_base_terrain.SetFrequency(2);
-
-        // m_flat_terrain.SetSourceModule(0, m_flat_base_terrain);
-        // m_flat_terrain.SetScale(0.125);
-        // m_flat_terrain.SetBias(-0.75);
-
-        // m_terrain_type.SetFrequency(0.5);
-        // m_terrain_type.SetPersistence(0.25);
-
-        // m_terrain_selector.SetSourceModule(0, m_flat_terrain);
-        // m_terrain_selector.SetSourceModule(1, m_mountain_terrain);
-        // m_terrain_selector.SetControlModule(m_terrain_type);
-        // m_terrain_selector.SetBounds(0, 1000);
-        // m_terrain_selector.SetEdgeFalloff(0.125);
-
-        // m_final_terrain.SetSourceModule(0, m_terrain_selector);
-        // m_final_terrain.SetFrequency(4);
-        // m_final_terrain.SetPower(0.125);
     }
 
-    World::~World() {
-        
-    }
+    World::~World() {}
 
     std::shared_ptr<Chunk> World::get_chunk(glm::i32vec3 chunk_pos) {
         return m_chunks[chunk_pos];
@@ -65,7 +40,7 @@ namespace world {
         auto world_z = chunk_pos.z * Chunk::size;
 
         std::array<f32, Chunk::area> noise_output;
-        m_max_smooth->GenUniformGrid2D(noise_output.data(), world_x, world_z, Chunk::size, Chunk::size, 0.005f, 1337);
+        m_max_smooth->GenUniformGrid2D(noise_output.data(), world_x, world_z, Chunk::size, Chunk::size, 0.005f, m_seed);
 
         for (i32 x = 0; x < Chunk::size; x++) {
             for (i32 z = 0; z < Chunk::size; z++) {
@@ -85,7 +60,7 @@ namespace world {
                     }
                     if (world_y < height - 1)
                         block = 1;
-                    chunk->m_blocks[util::coords_to_index<Chunk::size>(x, y, z)] = block;
+                    chunk->m_storage.set_block(util::coords_to_index<Chunk::size>(x, y, z), block);
                     world_y++;
                 }
                 world_y -= Chunk::size;
@@ -106,5 +81,12 @@ namespace world {
     void World::set_block_at(glm::i32vec3 pos, block::NID block_nid) {
         auto [d, r] = util::signed_i32vec3_divide(pos, Chunk::size);
         get_or_generate_chunk(d)->set_block_at(r, block_nid);
+    }
+
+    RayCastResult cast_ray(glm::vec3 start_pos, glm::vec3 end_pos) {
+        RayCastResult result {};
+        glm::vec3 ray = glm::normalize(end_pos - start_pos);
+        
+        return result;
     }
 }

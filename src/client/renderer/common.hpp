@@ -4,6 +4,8 @@
 
 #include <concepts>
 #include <vulkan/vulkan.h>
+
+#define VMA_VULKAN_VERSION 1002000 // Vulkan 1.2
 #include <vma/vk_mem_alloc.h>
 
 #define MAX_FRAMES_IN_FLIGHT 2

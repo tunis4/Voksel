@@ -17,7 +17,7 @@ namespace render {
         ChunkRender *m_current;
         bool m_finished = false;
 
-        i64 build();
+        void build();
 
         ChunkMeshBuilder(ChunkRenderer *renderer);
         ~ChunkMeshBuilder();

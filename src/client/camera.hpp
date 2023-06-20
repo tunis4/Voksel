@@ -8,9 +8,9 @@
 namespace client {
     class Camera {
     public:
-        static constexpr f32 slow_free_speed = 5;
-        static constexpr f32 normal_free_speed = 10;
-        static constexpr f32 fast_free_speed = 20;
+        static constexpr f32 normal_free_speed = 5 * 2;
+        static constexpr f32 slow_free_speed = normal_free_speed / 2;
+        static constexpr f32 fast_free_speed = normal_free_speed * 2;
 
         glm::vec3 m_pos;
         glm::vec3 m_front;

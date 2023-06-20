@@ -92,6 +92,17 @@ namespace render {
     }
 
     void ChunkRenderer::cleanup() {
+        delete m_mesh_builder;
+
+        for (auto chunk : m_chunks_meshed) {
+            vmaDestroyBuffer(m_context.allocator, chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation);
+            vmaDestroyBuffer(m_context.allocator, chunk->m_index_buffer, chunk->m_index_buffer_allocation);
+            delete chunk;
+        }
+
+        for (auto chunk : m_chunks_to_mesh)
+            delete chunk;
+
         m_block_texture.cleanup();
 
         vkDestroyPipeline(m_context.device, m_pipeline, nullptr);

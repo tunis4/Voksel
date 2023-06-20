@@ -6,10 +6,10 @@ namespace block {
         m_id = id;
     }
 
-    void BlockData::set_textures(u32 top_face, u32 bottom_face, u32 north_face, u32 south_face, u32 west_face, u32 east_face) {
+    void BlockData::set_textures(u32 top_face, u32 bottom_face, u32 north_face, u32 south_face, u32 east_face, u32 west_face) {
         m_top_tex_layer = top_face; m_bottom_tex_layer = bottom_face;
         m_north_tex_layer = north_face; m_south_tex_layer = south_face;
-        m_west_tex_layer = west_face; m_east_tex_layer = east_face;
+        m_east_tex_layer = east_face; m_west_tex_layer = west_face;
     }
 
     static std::array<BlockData*, 9> block_data_registry;

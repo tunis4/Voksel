@@ -17,7 +17,7 @@ namespace render {
     class Renderer {
         Context m_context;
         
-        bool m_framebuffer_resized;
+        bool m_framebuffer_resized = false;
 
         struct PerFrame {
             VkCommandBuffer m_command_buffer;
@@ -27,7 +27,7 @@ namespace render {
         };
 
         std::array<PerFrame, MAX_FRAMES_IN_FLIGHT> m_per_frame;
-        uint m_frame_index;
+        uint m_frame_index = 0;
 
         ChunkRenderer *m_chunk_renderer;
 

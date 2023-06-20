@@ -28,7 +28,7 @@ using f64 = double;
 
 namespace util {
     enum class Direction {
-        NORTH, SOUTH, WEST, EAST
+        NORTH, SOUTH, EAST, WEST
     };
 
     enum class MovementDirection {

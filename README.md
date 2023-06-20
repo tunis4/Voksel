@@ -1,6 +1,6 @@
 # Voksel
 
-a simple voxel engine, very wip
+A shrimple (for now) voxel engine, very WIP
 
 ```console
 $ git clone --recurse-submodules https://github.com/Tunacan427/Voksel
@@ -10,14 +10,15 @@ $ meson compile -C build
 $ ./build/voksel
 ```
 
-libraries used:
-- glfw
-- vulkan
-- vulkan memory allocator (vma) (included)
-- glm
-- stb image (included)
-- dear imgui (included)
-- fastnoise2 (git submodule)
-- freetype2
+Libraries used:
+- GLFW
+- Vulkan
+- Vulkan Memory Allocator (VMA) (included)
+- GLM
+- stb_image (included)
+- Dear ImGui (included)
+- FastNoise2 (git submodule)
+- FreeType2
+- [PackedArray](https://github.com/gpakosz/PackedArray) (included)
 
 also the Roboto font is included

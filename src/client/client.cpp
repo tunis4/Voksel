@@ -27,15 +27,24 @@ namespace client {
             }
         });
 
-        m_camera = new Camera(glm::vec3(16, 16, 16));
+        m_camera = new Camera(glm::vec3(16 * 2, 16 * 2, 16 * 2));
         m_camera->set_free(true);
 
         block::register_blocks();
         m_world = new world::World();
+        
+        m_world->set_block_at(glm::i32vec3(24, 24, 24), 8);
+        // for (int i = 0; i < 1234; i++)
+        //     m_world->set_block_at(glm::i32vec3(0, 32 + i, 0), m_world->get_block_at(glm::i32vec3(0, 32 + i - 1, 0)) + 1);
+
         m_renderer = new render::Renderer(m_window, m_camera);
     }
 
     Client::~Client() {
+        delete m_renderer;
+        delete m_world;
+        delete m_camera;
+        delete m_window;
         client_singleton = nullptr;
     }
     

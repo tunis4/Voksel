@@ -3,6 +3,7 @@
 #include <memory>
 #include <glm/ext/vector_int3_sized.hpp>
 
+#include "block_storage.hpp"
 #include "../block/block.hpp"
 
 namespace world {
@@ -12,7 +13,7 @@ namespace world {
         static constexpr i32 area = size * size;
         static constexpr i32 volume = size * size * size;
 
-        block::NID m_blocks[volume];
+        BlockStorage m_storage;
 
         Chunk();
         ~Chunk();

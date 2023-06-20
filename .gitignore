@@ -1,5 +1,7 @@
-build/
-.vscode/
-.cache/
+/build/
+/res/shaders/build/*
+!/res/shaders/build/.gitkeep
+/.vscode/
+/.cache/
 imgui.ini
-x86_64-w64-mingw32.txt
+/x86_64-w64-mingw32.txt
