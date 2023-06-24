@@ -40,6 +40,7 @@ voksel_source_files = [
   'src/client/renderer/queue_manager.cpp',
   'src/client/renderer/swapchain.cpp',
   'src/client/renderer/texture.cpp',
+  'src/client/renderer/persistent_buffer.cpp',
   'src/client/renderer/imgui_impl_voksel.cpp',
   'src/client/renderer/context.cpp',
   'src/client/renderer/chunk_renderer.cpp',

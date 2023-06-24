@@ -6,62 +6,78 @@
 #include <cstring>
 #include <chrono>
 #include <imgui/imgui.h>
+#include <entt/entt.hpp>
 #include <vulkan/vulkan_core.h>
 
 namespace render {
     void ChunkRenderer::init() {
+        auto texture_manager = entt::locator<TextureManager>::value();
+        u32 num_textures = texture_manager.num_textures();
+
         VkDescriptorSetLayoutBinding ub_layout_binding {};
         ub_layout_binding.binding = 0;
         ub_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         ub_layout_binding.descriptorCount = 1;
         ub_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
+        
         VkDescriptorSetLayoutBinding sampler_layout_binding {};
         sampler_layout_binding.binding = 1;
-        sampler_layout_binding.descriptorCount = 1;
+        sampler_layout_binding.descriptorCount = num_textures;
         sampler_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         sampler_layout_binding.pImmutableSamplers = nullptr;
         sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+		VkDescriptorSetLayoutBindingFlagsCreateInfo set_layout_binding_flags {};
+		set_layout_binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+		set_layout_binding_flags.bindingCount = 2;
+		constexpr std::array descriptor_binding_flags = std::to_array<VkDescriptorBindingFlags>({
+			0, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+		});
+		set_layout_binding_flags.pBindingFlags = descriptor_binding_flags.data();
+
         std::array bindings = std::to_array<VkDescriptorSetLayoutBinding>({ ub_layout_binding, sampler_layout_binding });
         VkDescriptorSetLayoutCreateInfo layout_info {};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layout_info.pNext = &set_layout_binding_flags;
         layout_info.bindingCount = bindings.size();
         layout_info.pBindings = bindings.data();
 
         CHECK_VK(vkCreateDescriptorSetLayout(m_context.device, &layout_info, nullptr, &m_descriptor_set_layout));
 
-        m_block_texture.init();
+        for (auto &frame : m_per_frame)
+            frame.uniform_buffer.create(m_context, sizeof(UniformBuffer), sizeof(UniformBuffer), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
         
-        for (auto &frame : m_per_frame) {
-            VmaAllocationInfo alloc_info;
-            m_context.create_buffer(&frame.m_uniform_buffer, &frame.m_uniform_buffer_allocation, &alloc_info, sizeof(UniformBuffer), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            frame.m_uniform_buffer_mapped = alloc_info.pMappedData;
-        }
-        
+		VkDescriptorSetVariableDescriptorCountAllocateInfo variable_descriptor_count_alloc_info {};
+		variable_descriptor_count_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+		variable_descriptor_count_alloc_info.descriptorSetCount = 1;
+		variable_descriptor_count_alloc_info.pDescriptorCounts = &num_textures;
+
         VkDescriptorSetAllocateInfo alloc_info {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.pNext = &variable_descriptor_count_alloc_info;
         alloc_info.descriptorPool = m_context.descriptor_pool;
         alloc_info.descriptorSetCount = 1;
         alloc_info.pSetLayouts = &m_descriptor_set_layout;
 
+        std::vector<VkDescriptorImageInfo> image_info(num_textures);
+        for (u32 i = 0; i < num_textures; i++) {
+            image_info[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_info[i].imageView = texture_manager.m_textures[i].m_image_view;
+            image_info[i].sampler = texture_manager.m_textures[i].m_sampler;
+        }
+
         for (auto &frame : m_per_frame) {
-            CHECK_VK(vkAllocateDescriptorSets(m_context.device, &alloc_info, &frame.m_descriptor_set));
+            CHECK_VK(vkAllocateDescriptorSets(m_context.device, &alloc_info, &frame.descriptor_set));
             
             VkDescriptorBufferInfo buffer_info {};
-            buffer_info.buffer = frame.m_uniform_buffer;
+            buffer_info.buffer = frame.uniform_buffer.m_buffer;
             buffer_info.offset = 0;
             buffer_info.range = sizeof(UniformBuffer);
-
-            VkDescriptorImageInfo image_info {};
-            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            image_info.imageView = m_block_texture.m_image_view;
-            image_info.sampler = m_block_texture.m_sampler;
 
             std::array<VkWriteDescriptorSet, 2> descriptor_writes {};
 
             descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptor_writes[0].dstSet = frame.m_descriptor_set;
+            descriptor_writes[0].dstSet = frame.descriptor_set;
             descriptor_writes[0].dstBinding = 0;
             descriptor_writes[0].dstArrayElement = 0;
             descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -69,12 +85,12 @@ namespace render {
             descriptor_writes[0].pBufferInfo = &buffer_info;
 
             descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptor_writes[1].dstSet = frame.m_descriptor_set;
+            descriptor_writes[1].dstSet = frame.descriptor_set;
             descriptor_writes[1].dstBinding = 1;
             descriptor_writes[1].dstArrayElement = 0;
             descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptor_writes[1].descriptorCount = 1;
-            descriptor_writes[1].pImageInfo = &image_info;
+            descriptor_writes[1].descriptorCount = num_textures;
+            descriptor_writes[1].pImageInfo = image_info.data();
 
             vkUpdateDescriptorSets(m_context.device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
         }
@@ -82,17 +98,23 @@ namespace render {
         m_pipeline = PipelineBuilder::begin(m_context.device)
             .shaders("chunk").vertex_input_info<ChunkVertex>()
             .input_assembly().viewport_state().rasterizer(VK_CULL_MODE_BACK_BIT)
-            .multisampling().depth_stencil(true, true).color_blending(true)
+            .multisampling().depth_stencil(true, true).color_blending(false)
             .dynamic_states({ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR })
             .layout<PushConstants>(&m_pipeline_layout, &m_descriptor_set_layout)
             .finish(m_context.render_pass);
 
+        constexpr usize vertex_buffer_size = 128 * 1024 * 1024;
+        m_vertex_buffer.create(m_context, vertex_buffer_size, 64 * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+
         m_mesh_builder = new ChunkMeshBuilder(this);
         m_last_camera_pos = glm::i32vec3(1024, 1024, 1024); // so that it immediately gets reset properly
+        m_timer = 0.0f;
     }
 
     void ChunkRenderer::cleanup() {
         delete m_mesh_builder;
+
+        m_vertex_buffer.destroy(m_context);
 
         for (auto chunk : m_chunks_meshed) {
             vmaDestroyBuffer(m_context.allocator, chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation);
@@ -103,22 +125,19 @@ namespace render {
         for (auto chunk : m_chunks_to_mesh)
             delete chunk;
 
-        m_block_texture.cleanup();
-
         vkDestroyPipeline(m_context.device, m_pipeline, nullptr);
         vkDestroyPipelineLayout(m_context.device, m_pipeline_layout, nullptr);
 
-        for (auto &frame : m_per_frame) {
-            vmaDestroyBuffer(m_context.allocator, frame.m_uniform_buffer, frame.m_uniform_buffer_allocation);
-        }
+        for (auto &frame : m_per_frame)
+            frame.uniform_buffer.destroy(m_context);
 
         vkDestroyDescriptorSetLayout(m_context.device, m_descriptor_set_layout, nullptr);
     }
 
     void ChunkRenderer::allocate_chunk_mesh(ChunkRender *chunk, const std::vector<ChunkVertex> &vertices, const std::vector<u32> &indices) {
-        VkDeviceSize vertex_buffer_size = vertices.size() * sizeof(ChunkVertex);
-        VkDeviceSize index_buffer_size = indices.size() * sizeof(u32);
-        VkDeviceSize staging_buffer_size = std::max(vertex_buffer_size, index_buffer_size);
+        usize vertex_buffer_size = vertices.size() * sizeof(ChunkVertex);
+        usize index_buffer_size = indices.size() * sizeof(u32);
+        usize staging_buffer_size = std::max(vertex_buffer_size, index_buffer_size);
         VkBuffer staging_buffer;
         VmaAllocation staging_buffer_allocation;
         void *staging_buffer_mapped;
@@ -142,11 +161,13 @@ namespace render {
         vmaDestroyBuffer(m_context.allocator, staging_buffer, staging_buffer_allocation);
     }
 
-    void ChunkRenderer::update() {
+    void ChunkRenderer::update(f64 delta_time) {
+        m_timer += (f32)delta_time;
+
         i64 time_spent = 0;
         auto start = std::chrono::high_resolution_clock::now();
         if (!m_chunks_to_mesh.empty()) {
-            while (time_spent < 100000) {
+            while (time_spent < 10000) {
                 if (m_chunks_to_mesh.empty())
                     break;
                 
@@ -164,11 +185,11 @@ namespace render {
     }
     
     void ChunkRenderer::record(VkCommandBuffer cmd, uint frame_index) {
-        ImGui::SeparatorText("Chunk Renderer");
+        ImGui::Begin("Chunk Renderer", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
         static i32 render_distance = 8;
         ImGui::SliderInt("Render distance", &render_distance, 1, 32);
-        static i32 reiterate_threshold = 32; // when moved this many blocks
-        ImGui::SliderInt("Reiteration threshold", &reiterate_threshold, 1, 32);
+        static bool pause_reiteration = false;
+        ImGui::Checkbox("Pause reiteration", &pause_reiteration);
 
         PerFrame &frame = m_per_frame[frame_index];
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
@@ -185,14 +206,15 @@ namespace render {
         // ub.fog_far = fog_far;
         ub.fog_near = ((f32)render_distance - 2.5f) * 64;
         ub.fog_far = ((f32)render_distance - 2.0f) * 64;
-        std::memcpy(frame.m_uniform_buffer_mapped, &ub, sizeof(ub));
+        ub.timer = m_timer;
+        frame.uniform_buffer.upload_data(m_context, &ub, sizeof(UniformBuffer), 0);
 
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, 0, 1, &frame.m_descriptor_set, 0, nullptr);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, 0, 1, &frame.descriptor_set, 0, nullptr);
 
         usize num_vertices_rendered = 0;
         usize num_draw_calls = 0;
 
-        bool reiterate = util::i32vec3_distance_squared(m_context.camera->block_pos(), m_last_camera_pos) > reiterate_threshold * reiterate_threshold;
+        bool reiterate = !pause_reiteration && util::i32vec3_distance_squared(m_context.camera->block_pos(), m_last_camera_pos) > 32 * 32;
         if (reiterate)
             m_last_camera_pos = m_context.camera->block_pos();
         glm::i32vec3 camera_chunk_pos = util::signed_i32vec3_divide(m_context.camera->block_pos(), 32).first;
@@ -224,7 +246,7 @@ namespace render {
             if (!m_context.camera->m_frustum.is_box_visible(min, max))
                 continue;
 
-            VkDeviceSize vb_offset = 0;
+            usize vb_offset = 0;
             vkCmdBindVertexBuffers(cmd, 0, 1, &chunk->m_vertex_buffer, &vb_offset);
             vkCmdBindIndexBuffer(cmd, chunk->m_index_buffer, 0, VK_INDEX_TYPE_UINT32);
         
@@ -274,5 +296,6 @@ namespace render {
         ImGui::Text("Vertices rendered: %ld", num_vertices_rendered);
         ImGui::Text("Chunks to mesh: %ld", m_chunks_to_mesh.size());
         ImGui::Text("Chunks meshed: %ld", m_chunks_meshed.size());
+        ImGui::End();
     }
 }

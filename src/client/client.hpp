@@ -2,17 +2,18 @@
 
 #include "window.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/chunk_renderer.hpp"
 #include "../world/world.hpp"
 
 namespace client {
     // Singleton
     class Client {
         Window *m_window;
-        render::Renderer *m_renderer;
+        render::Renderer m_renderer;
         world::World *m_world;
         Camera *m_camera;
         
-        f64 m_delta_time, m_last_frame;
+        f64 m_delta_time;
 
     public:
         Client();

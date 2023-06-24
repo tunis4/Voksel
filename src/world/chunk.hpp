@@ -13,6 +13,7 @@ namespace world {
         static constexpr i32 area = size * size;
         static constexpr i32 volume = size * size * size;
 
+        std::mutex m_mutex;
         BlockStorage m_storage;
 
         Chunk();

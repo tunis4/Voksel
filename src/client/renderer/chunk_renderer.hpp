@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common.hpp"
 #include "pipeline.hpp"
 #include "texture.hpp"
+#include "persistent_buffer.hpp"
 #include "../../world/chunk.hpp"
 
 namespace render {
@@ -20,13 +20,13 @@ namespace render {
     
     struct ChunkVertex {
         glm::vec3 m_pos;
-        u32 m_tex; // first 30 bits for layer, last 2 bits for index
+        u32 m_tex; // first 30 bits for texture index, last 2 bits for coordinate index
         f32 m_ao;
 
         inline ChunkVertex() {};
-        inline ChunkVertex(glm::vec3 pos, u32 tex_index, u32 tex_layer, u8 ao) {
+        inline ChunkVertex(glm::vec3 pos, u32 tex_coordinate_index, u32 tex_index, u8 ao) {
             m_pos = pos;
-            m_tex = ((tex_index & 0b11) << 30) | (tex_layer & ~((u32)0b11 << 30));
+            m_tex = ((tex_coordinate_index & 0b11) << 30) | (tex_index & ~((u32)0b11 << 30));
             m_ao = 1.0f / (ao + 1);
         }
 
@@ -70,6 +70,9 @@ namespace render {
             alignas(16) glm::vec3 fog_color;
             alignas( 4) f32 fog_near;
             alignas( 4) f32 fog_far;
+
+            // for both shaders
+            alignas( 4) f32 timer;
         };
 
         struct PushConstants {
@@ -77,10 +80,8 @@ namespace render {
         };
 
         struct PerFrame {
-            VkDescriptorSet m_descriptor_set;
-            VkBuffer m_uniform_buffer;
-            VmaAllocation m_uniform_buffer_allocation;
-            void *m_uniform_buffer_mapped;
+            VkDescriptorSet descriptor_set;
+            PersistentBuffer uniform_buffer;
         };
 
         std::array<PerFrame, MAX_FRAMES_IN_FLIGHT> m_per_frame;
@@ -90,19 +91,22 @@ namespace render {
         VkDescriptorSetLayout m_descriptor_set_layout;
         VkPipeline m_pipeline;
         VkPipelineLayout m_pipeline_layout;
-        Texture m_block_texture;
+        
+        PersistentBuffer m_vertex_buffer;
+
         ChunkMeshBuilder *m_mesh_builder;
 
+        f32 m_timer;
         glm::i32vec3 m_last_camera_pos;
         std::vector<ChunkRender*> m_chunks_meshed;
         std::vector<ChunkRender*> m_chunks_to_mesh; // must be sorted by distance
 
-        ChunkRenderer(Context &context) : m_context(context), m_block_texture(context) {}
+        ChunkRenderer(Context &context) : m_context(context) {}
 
         void init();
         void cleanup();
         void allocate_chunk_mesh(ChunkRender *chunk, const std::vector<ChunkVertex> &vertices, const std::vector<u32> &indices);
-        void update();
+        void update(f64 delta_time);
         void record(VkCommandBuffer cmd, uint frame_index);
     };
 }

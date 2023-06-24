@@ -1,5 +1,6 @@
 #include "chunk_mesh_builder.hpp"
 #include "../client.hpp"
+#include "src/block/block.hpp"
 #include "src/world/chunk.hpp"
 
 namespace render {
@@ -73,72 +74,76 @@ namespace render {
                                 else if (ry == world::Chunk::size) { cy = 2; ry = 0; }
                                 if (rz == -1) { cz = 0; rz = world::Chunk::size - 1; } 
                                 else if (rz == world::Chunk::size) { cz = 2; rz = 0; }
+
+                                if (cx == 1 && cy == 1 && cz == 1) // current chunk
+                                    NB(nx + 1, ny + 1, nz + 1) = unpacked[util::coords_to_index<world::Chunk::size>(rx, ry, rz)];
+                                
                                 auto c = NC(cx, cy, cz);
                                 NB(nx + 1, ny + 1, nz + 1) = c->m_storage.get_block(util::coords_to_index<world::Chunk::size>(rx, ry, rz));
                             }
                         }
                     }
 
-                    bool top_visible = NB(1, 2, 1) == 0;
-                    bool bottom_visible = NB(1, 0, 1) == 0;
-                    bool north_visible = NB(2, 1, 1) == 0;
-                    bool south_visible = NB(0, 1, 1) == 0;
-                    bool west_visible = NB(1, 1, 0) == 0;
-                    bool east_visible = NB(1, 1, 2) == 0;
+                    bool top_visible = NB(1, 2, 1) == 0 || (!data->m_top_transparent && block::get_block_data(NB(1, 2, 1))->m_bottom_transparent);
+                    bool bottom_visible = NB(1, 0, 1) == 0 || (!data->m_bottom_transparent && block::get_block_data(NB(1, 0, 1))->m_top_transparent);
+                    bool north_visible = NB(2, 1, 1) == 0 || (!data->m_north_transparent && block::get_block_data(NB(2, 1, 1))->m_south_transparent);
+                    bool south_visible = NB(0, 1, 1) == 0 || (!data->m_south_transparent && block::get_block_data(NB(0, 1, 1))->m_north_transparent);
+                    bool east_visible = NB(1, 1, 2) == 0 || (!data->m_east_transparent && block::get_block_data(NB(1, 1, 2))->m_west_transparent);
+                    bool west_visible = NB(1, 1, 0) == 0 || (!data->m_west_transparent && block::get_block_data(NB(1, 1, 0))->m_east_transparent);
                 
                     auto pos = glm::vec3(x * 2, y * 2, z * 2);
                     if (top_visible) {
                         u8 ao0 = V_AO(NB(0, 2, 1), NB(1, 2, 0), NB(0, 2, 0)), ao1 = V_AO(NB(0, 2, 1), NB(1, 2, 2), NB(0, 2, 2));
                         u8 ao2 = V_AO(NB(1, 2, 0), NB(2, 2, 1), NB(2, 2, 0)), ao3 = V_AO(NB(1, 2, 2), NB(2, 2, 1), NB(2, 2, 2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 1, data->m_top_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 3, data->m_top_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 0, data->m_top_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_top_tex_layer, ao3));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 1, data->m_top_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 3, data->m_top_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 0, data->m_top_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_top_tex_index, ao3));
                         push_face_indices(ao0 + ao3 > ao1 + ao2);
                     }
                     if (bottom_visible) {
                         u8 ao0 = V_AO(NB(0, 0, 1), NB(1, 0, 0), NB(0, 0, 0)), ao1 = V_AO(NB(2, 0, 1), NB(1, 0, 0), NB(2, 0, 0));
                         u8 ao2 = V_AO(NB(0, 0, 1), NB(1, 0, 2), NB(0, 0, 2)), ao3 = V_AO(NB(1, 0, 2), NB(2, 0, 1), NB(2, 0, 2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_bottom_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 0, data->m_bottom_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 3, data->m_bottom_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 2, data->m_bottom_tex_layer, ao3));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_bottom_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 0, data->m_bottom_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 3, data->m_bottom_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 2, data->m_bottom_tex_index, ao3));
                         push_face_indices(ao0 + ao3 > ao1 + ao2);
                     }
                     if (north_visible) {
                         u8 ao0 = V_AO(NB(2, 1, 0), NB(2, 0, 1), NB(2, 0, 0)), ao1 = V_AO(NB(2, 1, 0), NB(2, 2, 1), NB(2, 2, 0));
                         u8 ao2 = V_AO(NB(2, 1, 2), NB(2, 0, 1), NB(2, 0, 2)), ao3 = V_AO(NB(2, 1, 2), NB(2, 2, 1), NB(2, 2, 2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 1, data->m_north_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 0, data->m_north_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 3, data->m_north_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_north_tex_layer, ao3));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 1, data->m_north_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 0, data->m_north_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 3, data->m_north_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_north_tex_index, ao3));
                         push_face_indices(ao0 + ao3 > ao1 + ao2);
                     }
                     if (south_visible) {
                         u8 ao0 = V_AO(NB(0, 1, 0), NB(0, 0, 1), NB(0, 0, 0)), ao1 = V_AO(NB(0, 1, 2), NB(0, 0, 1), NB(0, 0, 2));
                         u8 ao2 = V_AO(NB(0, 1, 0), NB(0, 2, 1), NB(0, 2, 0)), ao3 = V_AO(NB(0, 1, 2), NB(0, 2, 1), NB(0, 2, 2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_south_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 3, data->m_south_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 0, data->m_south_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 2, data->m_south_tex_layer, ao3));
-                        push_face_indices(ao0 + ao3 > ao1 + ao2);
-                    }
-                    if (west_visible) {
-                        u8 ao0 = V_AO(NB(0, 1, 0), NB(1, 0, 0), NB(0, 0, 0)), ao1 = V_AO(NB(0, 1, 0), NB(1, 2, 0), NB(0, 2, 0));
-                        u8 ao2 = V_AO(NB(2, 1, 0), NB(1, 0, 0), NB(2, 0, 0)), ao3 = V_AO(NB(1, 2, 0), NB(2, 1, 0), NB(2, 2, 0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_west_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 0, data->m_west_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 3, data->m_west_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 2, data->m_west_tex_layer, ao3));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_south_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 3, data->m_south_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 0, data->m_south_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 2, data->m_south_tex_index, ao3));
                         push_face_indices(ao0 + ao3 > ao1 + ao2);
                     }
                     if (east_visible) {
                         u8 ao0 = V_AO(NB(0, 1, 2), NB(1, 0, 2), NB(0, 0, 2)), ao1 = V_AO(NB(2, 1, 2), NB(1, 0, 2), NB(2, 0, 2));
                         u8 ao2 = V_AO(NB(0, 1, 2), NB(1, 2, 2), NB(0, 2, 2)), ao3 = V_AO(NB(2, 1, 2), NB(1, 2, 2), NB(2, 2, 2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 1, data->m_east_tex_layer, ao0));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 3, data->m_east_tex_layer, ao1));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 0, data->m_east_tex_layer, ao2));
-                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_east_tex_layer, ao3));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1,  1), 1, data->m_east_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1,  1), 3, data->m_east_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1,  1), 0, data->m_east_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1,  1), 2, data->m_east_tex_index, ao3));
+                        push_face_indices(ao0 + ao3 > ao1 + ao2);
+                    }
+                    if (west_visible) {
+                        u8 ao0 = V_AO(NB(0, 1, 0), NB(1, 0, 0), NB(0, 0, 0)), ao1 = V_AO(NB(0, 1, 0), NB(1, 2, 0), NB(0, 2, 0));
+                        u8 ao2 = V_AO(NB(2, 1, 0), NB(1, 0, 0), NB(2, 0, 0)), ao3 = V_AO(NB(1, 2, 0), NB(2, 1, 0), NB(2, 2, 0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1, -1, -1), 1, data->m_west_tex_index, ao0));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3(-1,  1, -1), 0, data->m_west_tex_index, ao1));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1, -1, -1), 3, data->m_west_tex_index, ao2));
+                        m_vertices.push_back(ChunkVertex(pos + glm::vec3( 1,  1, -1), 2, data->m_west_tex_index, ao3));
                         push_face_indices(ao0 + ao3 > ao1 + ao2);
                     }
 

@@ -15,8 +15,6 @@
 
 namespace render {
     class Renderer {
-        Context m_context;
-        
         bool m_framebuffer_resized = false;
 
         struct PerFrame {
@@ -29,16 +27,12 @@ namespace render {
         std::array<PerFrame, MAX_FRAMES_IN_FLIGHT> m_per_frame;
         uint m_frame_index = 0;
 
-        ChunkRenderer *m_chunk_renderer;
-
 #ifdef ENABLE_VK_VALIDATION_LAYERS
         VkDebugUtilsMessengerEXT m_vk_debug_messenger;
         void setup_debug_messenger();
         bool check_validation_layer_support();
 #endif
 
-        void init_vulkan();
-        void cleanup_vulkan();
         void create_instance();
         std::vector<const char*> get_required_extensions();
         bool is_device_suitable(VkPhysicalDevice physical_device);
@@ -56,10 +50,13 @@ namespace render {
         void setup_dear_imgui();
 
     public:
-        Renderer(client::Window *window, client::Camera *camera);
-        ~Renderer();
+        Context m_context;
 
-        void render();
+        void init(client::Window *window, client::Camera *camera);
+        void begin_cleanup();
+        void cleanup();
+        
+        void render(f64 delta_time);
 
         void on_framebuffer_resize(uint width, uint height);
         void on_cursor_move(f64 x, f64 y);

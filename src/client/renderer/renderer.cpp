@@ -1,30 +1,19 @@
 #include "renderer.hpp"
+#include "texture.hpp"
+#include "imgui_impl_voksel.hpp"
 
 #include <array>
 #include <cstring>
 #include <chrono>
 #include <set>
-#include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
-#include <vulkan/vulkan_core.h>
-#include "chunk_renderer.hpp"
-#include "common.hpp"
-#include "imgui_impl_voksel.hpp"
-#include "vma/vk_mem_alloc.h"
+#include <entt/entt.hpp>
 
 namespace render {
-    Renderer::Renderer(client::Window *window, client::Camera *camera) {
+    void Renderer::init(client::Window *window, client::Camera *camera) {
         m_context.window = window;
         m_context.camera = camera;
-        
-        init_vulkan();
-    }
 
-    Renderer::~Renderer() {
-        cleanup_vulkan();
-    }
-
-    void Renderer::init_vulkan() {
         create_instance();
 #ifdef ENABLE_VK_VALIDATION_LAYERS
         setup_debug_messenger();
@@ -43,8 +32,7 @@ namespace render {
         create_sync_objects();
         setup_dear_imgui();
 
-        m_chunk_renderer = new ChunkRenderer(m_context);
-        m_chunk_renderer->init();
+        entt::locator<TextureManager>::emplace(m_context).init();
     }
 
     constexpr std::array requested_validation_layers = std::to_array<const char*>({
@@ -161,13 +149,27 @@ namespace render {
 
     bool Renderer::is_device_suitable(VkPhysicalDevice physical_device) {
         m_context.queue_manager.find_queue_families(physical_device, m_context.surface);
+
+        VkPhysicalDeviceDescriptorIndexingFeatures supported_descriptor_indexing_features {};
+        supported_descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+
+        VkPhysicalDeviceFeatures2 supported_features {};
+        supported_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        supported_features.pNext = &supported_descriptor_indexing_features;
+
+        vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);
+        bool features_supported = supported_descriptor_indexing_features.runtimeDescriptorArray &&
+            supported_descriptor_indexing_features.descriptorBindingVariableDescriptorCount &&
+            supported_descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing;
+        
         bool extensions_supported = check_device_extension_support(physical_device);
         bool swapchain_adequate = false;
         if (extensions_supported) {
             SwapchainSupportDetails swap_chain_support = m_context.swapchain.query_support(physical_device, m_context.surface);
             swapchain_adequate = !swap_chain_support.formats.empty() && !swap_chain_support.present_modes.empty();
         }
-        return m_context.queue_manager.are_families_complete() && extensions_supported && swapchain_adequate;
+
+        return m_context.queue_manager.are_families_complete() && features_supported && extensions_supported && swapchain_adequate;
     }
 
     void Renderer::pick_physical_device() {
@@ -235,6 +237,13 @@ namespace render {
 
         VkPhysicalDeviceFeatures device_features {};
         create_info.pEnabledFeatures = &device_features;
+
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features {};
+        descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        descriptor_indexing_features.runtimeDescriptorArray = true;
+        descriptor_indexing_features.descriptorBindingVariableDescriptorCount = true;
+        descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing = true;
+        create_info.pNext = &descriptor_indexing_features;
 
         create_info.enabledExtensionCount = requested_device_extensions.size();
         create_info.ppEnabledExtensionNames = requested_device_extensions.data();
@@ -408,14 +417,14 @@ namespace render {
     void Renderer::create_descriptor_pool() {
         std::array pool_sizes = std::to_array<VkDescriptorPoolSize>({
             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16 }
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128 }
         });
 
         VkDescriptorPoolCreateInfo pool_info {};
         pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.poolSizeCount = pool_sizes.size();
         pool_info.pPoolSizes = pool_sizes.data();
-        pool_info.maxSets = MAX_FRAMES_IN_FLIGHT;
+        pool_info.maxSets = 64; // gotta be careful about this
 
         CHECK_VK(vkCreateDescriptorPool(m_context.device, &pool_info, nullptr, &m_context.descriptor_pool));
     }
@@ -457,7 +466,7 @@ namespace render {
             scissor.extent = m_context.swapchain.m_extent;
             vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
-            m_chunk_renderer->record(command_buffer, m_frame_index);
+            entt::locator<render::ChunkRenderer>::value().record(command_buffer, m_frame_index);
             
             ImGui::End();
             ImGui::Render();
@@ -467,10 +476,8 @@ namespace render {
         CHECK_VK(vkEndCommandBuffer(command_buffer));
     }
 
-    void Renderer::render() {
+    void Renderer::render(f64 delta_time) {
         PerFrame &frame = m_per_frame[m_frame_index];
-        
-        m_chunk_renderer->update();
 
         if (!m_context.buffer_deletions.empty()) {
             std::array<VkFence, MAX_FRAMES_IN_FLIGHT> in_flight_fences;
@@ -530,10 +537,8 @@ namespace render {
         m_frame_index = (m_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    void Renderer::cleanup_vulkan() {
-        auto device = m_context.device;
-
-        vkDeviceWaitIdle(device);
+    void Renderer::begin_cleanup() {
+        vkDeviceWaitIdle(m_context.device);
 
         ImGui_ImplVoksel_Shutdown();
         ImGui_ImplGlfw_Shutdown();
@@ -546,9 +551,12 @@ namespace render {
                 m_context.buffer_deletions.pop();
             } while (!m_context.buffer_deletions.empty());
         }
-        
-        m_chunk_renderer->cleanup();
-        delete m_chunk_renderer;
+    }
+
+    void Renderer::cleanup() {
+        auto device = m_context.device;
+
+        entt::locator<TextureManager>::value().cleanup();
 
         for (auto &frame : m_per_frame) {
             vkDestroySemaphore(device, frame.m_image_available_semaphore, nullptr);

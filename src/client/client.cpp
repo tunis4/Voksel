@@ -1,8 +1,11 @@
 #include "client.hpp"
+#include "renderer/chunk_renderer.hpp"
+#include "renderer/imgui_impl_voksel.hpp"
 
+#include <chrono>
+#include <entt/entt.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
-#include "renderer/imgui_impl_voksel.hpp"
 
 namespace client {
     static Client *client_singleton = nullptr;
@@ -17,31 +20,34 @@ namespace client {
         m_window->enable_cursor();
 
         m_window->set_framebuffer_size_callback([&] (uint width, uint height) {
-            m_renderer->on_framebuffer_resize(width, height);
+            m_renderer.on_framebuffer_resize(width, height);
         });
 
         m_window->set_cursor_pos_callback([&] (f64 x, f64 y) {
             if (!m_window->is_cursor_enabled()) {
                 m_camera->process_mouse_movement(x, y);
-                m_renderer->on_cursor_move(x, y);
+                m_renderer.on_cursor_move(x, y);
             }
         });
 
         m_camera = new Camera(glm::vec3(16 * 2, 16 * 2, 16 * 2));
         m_camera->set_free(true);
 
+        m_renderer.init(m_window, m_camera);
+
         block::register_blocks();
         m_world = new world::World();
         
-        m_world->set_block_at(glm::i32vec3(24, 24, 24), 8);
-        // for (int i = 0; i < 1234; i++)
-        //     m_world->set_block_at(glm::i32vec3(0, 32 + i, 0), m_world->get_block_at(glm::i32vec3(0, 32 + i - 1, 0)) + 1);
-
-        m_renderer = new render::Renderer(m_window, m_camera);
+        for (usize i = 0; i < block::num_block_data(); i++)
+            m_world->set_block_at(glm::i32vec3(24 + i * 2, 24, 24), i);
+        
+        entt::locator<render::ChunkRenderer>::emplace(m_renderer.m_context).init();
     }
 
     Client::~Client() {
-        delete m_renderer;
+        m_renderer.begin_cleanup();
+        entt::locator<render::ChunkRenderer>::value().cleanup();
+        m_renderer.cleanup();
         delete m_world;
         delete m_camera;
         delete m_window;
@@ -56,9 +62,7 @@ namespace client {
 
     void Client::loop() {
         while (!m_window->should_close()) {
-            f64 current_frame = glfwGetTime();
-            m_delta_time = current_frame - m_last_frame;
-            m_last_frame = current_frame;
+            auto frame_start = std::chrono::high_resolution_clock::now();
 
             ImGui_ImplVoksel_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -81,9 +85,13 @@ namespace client {
             m_camera->update_matrices(m_window->width(), m_window->height());
             m_camera->m_frustum.update(m_camera->m_projection_matrix * m_camera->m_view_matrix);
             
-            m_renderer->render();
+            entt::locator<render::ChunkRenderer>::value().update(m_delta_time);
+            m_renderer.render(m_delta_time);
 
             glfwPollEvents();
+
+            auto frame_end = std::chrono::high_resolution_clock::now();
+            m_delta_time = std::chrono::duration_cast<std::chrono::duration<f64>>(frame_end - frame_start).count(); // cast to seconds as f64
         }
     }
 

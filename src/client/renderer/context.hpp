@@ -37,9 +37,9 @@ namespace render {
 
         VkCommandBuffer begin_single_time_commands();
         void end_single_time_commands(VkCommandBuffer command_buffer);
-        void create_buffer(VkBuffer *buffer, VmaAllocation *allocation, VmaAllocationInfo *alloc_info, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags alloc_flags);
+        void create_buffer(VkBuffer *buffer, VmaAllocation *allocation, VmaAllocationInfo *alloc_info, usize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags alloc_flags);
         void create_image(VkImage *image, VmaAllocation *allocation, VmaAllocationInfo *alloc_info, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaAllocationCreateFlags alloc_flags);
-        void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+        void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, usize size);
         void transition_image_layout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout);
         void copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, u32 height);
     };

@@ -17,6 +17,7 @@ namespace world {
         FastNoise::SmartNode<FastNoise::Simplex> m_simplex_noise;
         FastNoise::SmartNode<FastNoise::FractalFBm> m_fractal_noise;
         FastNoise::SmartNode<FastNoise::MaxSmooth> m_max_smooth;
+        FastNoise::SmartNode<> m_cellular_caves_noise;
         
         std::unordered_map<glm::i32vec3, std::shared_ptr<Chunk>> m_chunks;
 

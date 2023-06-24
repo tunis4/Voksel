@@ -580,7 +580,7 @@ typedef uint32_t __attribute__((aligned(16)))       PackedArray_aligned_uint32_t
 #endif
 
 #if !defined(PACKEDARRAY_ALIGNED_MALLOC)
-#if defined (_MSC_VER)
+#if defined (_MSC_VER) || defined (__MINGW32__)
 #define PACKEDARRAY_ALIGNED_MALLOC(alignment, size) _aligned_malloc(size, alignment)
 #elif defined (ANDROID) || defined (__ANDROID__)
 #define PACKEDARRAY_ALIGNED_MALLOC(alignment, size) memalign(alignment, size)
@@ -596,7 +596,7 @@ static void* __PackedArray_aligned_malloc(size_t alignment, size_t size)
 #endif
 
 #if !defined(PACKEDARRAY_FREE)
-#if defined (_MSC_VER)
+#if defined (_MSC_VER) || defined (__MINGW32__)
 #define PACKEDARRAY_FREE(p) _aligned_free(p)
 #else
 #define PACKEDARRAY_FREE(p) free(p)

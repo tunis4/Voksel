@@ -92,11 +92,13 @@ namespace util {
 
     template<typename... Args>
     void log(LogLevel level, const char *context, const char *format, Args... args) {
+#ifdef __linux__
         switch (level) {
         case LogLevel::INFO: std::cout << "\033[1;37m"; break;
         case LogLevel::WARN: std::cout << "\033[1;33m"; break;
         case LogLevel::ERROR: std::cout << "\033[1;31m"; break;
         }
+#endif
 
         auto t = std::time(nullptr);
         auto tm = *std::localtime(&t);
@@ -109,13 +111,22 @@ namespace util {
         }
 
         std::cout << "[" << context << "] ";
+
+#ifdef __linux__
         std::cout << "\033[0;m";
         switch (level) {
         case LogLevel::INFO: std::cout << "\033[37m"; break;
         case LogLevel::WARN: std::cout << "\033[33m"; break;
         case LogLevel::ERROR: std::cout << "\033[31m"; break;
         }
+#endif
+
         rprintf(format, args...);
+
+#ifdef __linux__
         std::cout << "\033[0;m" << std::endl;
+#else
+        std::cout << std::endl;
+#endif
     }
 }

@@ -16,6 +16,7 @@ Libraries used:
 - Vulkan Memory Allocator (VMA) (included)
 - GLM
 - stb_image (included)
+- EnTT (included)
 - Dear ImGui (included)
 - FastNoise2 (git submodule)
 - FreeType2

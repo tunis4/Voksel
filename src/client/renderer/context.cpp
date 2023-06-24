@@ -1,7 +1,7 @@
 #include "context.hpp"
 
 namespace render {
-    void Context::create_buffer(VkBuffer *buffer, VmaAllocation *allocation, VmaAllocationInfo *alloc_info, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags alloc_flags) {
+    void Context::create_buffer(VkBuffer *buffer, VmaAllocation *allocation, VmaAllocationInfo *alloc_info, usize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags alloc_flags) {
         VkBufferCreateInfo buffer_info {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = size;
@@ -11,7 +11,6 @@ namespace render {
         VmaAllocationCreateInfo alloc_create_info {};
         alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO;
         alloc_create_info.flags = alloc_flags;
-        
         CHECK_VK(vmaCreateBuffer(allocator, &buffer_info, &alloc_create_info, buffer, allocation, alloc_info));
     }
     
@@ -67,7 +66,7 @@ namespace render {
         vkFreeCommandBuffers(device, transient_command_pool, 1, &command_buffer);
     }
 
-    void Context::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size) {
+    void Context::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, usize size) {
         VkCommandBuffer command_buffer = begin_single_time_commands();
         
         VkBufferCopy copy_region {};
