@@ -65,6 +65,12 @@ namespace block {
         planks_block.set_textures(planks_texture);
         block_data_registry.push_back(planks_block);
         
+        BlockData wood_log_block("wood_log");
+        u32 wood_log_top_texture = texture_manager.load_texture("wood_log_top");
+        u32 wood_log_side_texture = texture_manager.load_texture("wood_log_side");
+        wood_log_block.set_textures(wood_log_top_texture, wood_log_top_texture, wood_log_side_texture);
+        block_data_registry.push_back(wood_log_block);
+        
         BlockData sand_block("sand");
         u32 sand_texture = texture_manager.load_texture("sand");
         sand_block.set_textures(sand_texture);
@@ -75,12 +81,11 @@ namespace block {
         glass_block.set_textures(glass_texture);
         glass_block.set_transparency(true);
         block_data_registry.push_back(glass_block);
-        
-        BlockData wood_log_block("wood_log");
-        u32 wood_log_top_texture = texture_manager.load_texture("wood_log_top");
-        u32 wood_log_side_texture = texture_manager.load_texture("wood_log_side");
-        wood_log_block.set_textures(wood_log_top_texture, wood_log_top_texture, wood_log_side_texture);
-        block_data_registry.push_back(wood_log_block);
+
+        BlockData bricks_block("bricks");
+        u32 bricks_texture = texture_manager.load_texture("bricks");
+        bricks_block.set_textures(bricks_texture);
+        block_data_registry.push_back(bricks_block);
         
         BlockData water_block("water");
         u32 water_texture = texture_manager.load_texture("water");

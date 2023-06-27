@@ -33,6 +33,11 @@ namespace render {
         return *this;
     }
     
+    PipelineBuilder& PipelineBuilder::no_vertex_input_info() {
+        m_vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        return *this;
+    }
+    
     PipelineBuilder& PipelineBuilder::input_assembly() {
         m_input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         m_input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

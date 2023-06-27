@@ -18,15 +18,15 @@ namespace client {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, true);
         
-        m_window = glfwCreateWindow(window_width, window_height, window_title.c_str(), NULL, NULL);
-        if (!m_window) {
+        m_glfw_window = glfwCreateWindow(window_width, window_height, window_title.c_str(), NULL, NULL);
+        if (!m_glfw_window) {
             glfwTerminate();
             throw std::runtime_error("Failed to create GLFW window");
         }
     }
 
     Window::~Window() {
-        glfwDestroyWindow(m_window);
+        glfwDestroyWindow(m_glfw_window);
         glfwTerminate();
         window_singleton = nullptr;
     }
@@ -37,7 +37,7 @@ namespace client {
 
     void Window::set_framebuffer_size_callback(std::function<void(uint width, uint height)> callback) {
         m_framebuffer_size_callback = callback;
-        glfwSetFramebufferSizeCallback(m_window, [] (GLFWwindow *_, int width, int height) {
+        glfwSetFramebufferSizeCallback(m_glfw_window, [] (GLFWwindow *_, int width, int height) {
             window_singleton->m_width = width;
             window_singleton->m_height = height;
             window_singleton->m_framebuffer_size_callback(static_cast<uint>(width), static_cast<uint>(height));
@@ -46,23 +46,27 @@ namespace client {
 
     void Window::set_cursor_pos_callback(std::function<void(f64 x, f64 y)> callback) {
         m_cursor_pos_callback = callback;
-        glfwSetCursorPosCallback(m_window, [] (GLFWwindow *_, f64 x, f64 y) {
+        glfwSetCursorPosCallback(m_glfw_window, [] (GLFWwindow *_, f64 x, f64 y) {
             window_singleton->m_cursor_pos_callback(x, y);
         });
     }
 
     void Window::close() {
-        glfwSetWindowShouldClose(m_window, true);
+        glfwSetWindowShouldClose(m_glfw_window, true);
     }
 
     void Window::enable_cursor() {
-        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(m_glfw_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         m_cursor_enabled = true;
+        m_cursor_x = m_width / 2;
+        m_cursor_y = m_height / 2;
     }
 
     void Window::disable_cursor() {
-        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetInputMode(m_glfw_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         m_cursor_enabled = false;
+        m_cursor_x = m_width / 2;
+        m_cursor_y = m_height / 2;
     }
 
     void Window::toggle_cursor() {
@@ -71,10 +75,10 @@ namespace client {
     }
 
     bool Window::is_key_pressed(int glfw_key) {
-        return glfwGetKey(m_window, glfw_key) == GLFW_PRESS;
+        return glfwGetKey(m_glfw_window, glfw_key) == GLFW_PRESS;
     }
 
     bool Window::is_mouse_button_pressed(int glfw_mouse_button) {
-        return glfwGetMouseButton(m_window, glfw_mouse_button) == GLFW_PRESS;
+        return glfwGetMouseButton(m_glfw_window, glfw_mouse_button) == GLFW_PRESS;
     }
 }

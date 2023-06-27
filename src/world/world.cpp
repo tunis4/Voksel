@@ -20,7 +20,7 @@ namespace world {
         m_max_smooth->SetLHS(m_ridged_noise);
         m_max_smooth->SetRHS(m_fractal_noise);
 
-        m_cellular_caves_noise = FastNoise::NewFromEncodedNodeTree("EwCamZk+GgABEQACAAAAAADgQBAAAACIQR8AFgABAAAACwADAAAAAgAAAAMAAAAEAAAAAAAAAD8BFAD//wAAAAAAAD8AAAAAPwAAAAA/AAAAAD8BFwAAAIC/AACAPz0KF0BSuB5AEwAAAKBABgAAj8J1PACamZk+AAAAAAAA4XoUPw==");
+        m_cave_noise = FastNoise::NewFromEncodedNodeTree("HgAIAAETAM3MzD4HAA==");
     }
 
     World::~World() {}
@@ -45,8 +45,9 @@ namespace world {
         m_max_smooth->GenUniformGrid2D(noise_output.data(), world_x, world_z, Chunk::size, Chunk::size, 0.005f, m_seed);
 
         std::array<f32, Chunk::volume> cave_noise_output;
-        if (world_y <= 32)
-            m_cellular_caves_noise->GenUniformGrid3D(cave_noise_output.data(), world_x, world_y, world_z, Chunk::size, Chunk::size, Chunk::size, 0.01f, m_seed);
+        if (world_y <= 32) {
+            m_cave_noise->GenUniformGrid3D(cave_noise_output.data(), world_x, world_y, world_z, Chunk::size, Chunk::size, Chunk::size, 0.019f, m_seed);
+        }
 
         for (i32 x = 0; x < Chunk::size; x++) {
             for (i32 z = 0; z < Chunk::size; z++) {
@@ -60,23 +61,22 @@ namespace world {
                             block = 3;
                     } else {
                         if (world_y == height || world_y == height - 1)
-                            block = 6;
+                            block = 7;
                         if (world_y <= 0 && world_y > height)
-                            block = 9;
+                            block = 10;
                     }
                     if (world_y <= height) {
                         if (world_y > 32 && world_y < height - 1) {
                             block = 1;
                         } else {
-                            f32 density = cave_noise_output[z * Chunk::size * Chunk::size + y * Chunk::size + x] * 32.0f;
-                            if (world_y < height - 1 && density < 0.1f)
+                            f32 cave_multiplier = 50.0f - 25.0f * std::clamp((world_y + 32.0f) / 64.0f, 0.0f, 1.0f);
+                            f32 cave_density = (cave_noise_output[z * Chunk::size * Chunk::size + y * Chunk::size + x] + 1.0f) * cave_multiplier;
+                            if (world_y < height - 1 && cave_density < 75.0f) {
                                 block = 1;
-                            else if (density >= 0.1f)
+                            } else if (cave_density >= 75.0f)
                                 block = 0;
                         }
                     }
-                    // if (world_y < height - 1)
-                    //     block = 1;
                     
                     chunk->m_storage.set_block(util::coords_to_index<Chunk::size>(x, y, z), block);
                     world_y++;
@@ -101,37 +101,58 @@ namespace world {
         get_or_generate_chunk(d)->set_block_at(r, block_nid);
     }
 
-    RayCastResult cast_ray(glm::vec3 start_pos, glm::vec3 end_pos) {
+    RayCastResult World::cast_ray(glm::vec3 start_pos, glm::vec3 end_pos) {
         RayCastResult result {};
 
-        // // using floor is actually very important, the implicit int-casting will round up for negative numbers
-        // glm::i32vec3 current_block_pos(std::floor(start_pos.x / 2.0f), std::floor(start_pos.y / 2.0f), std::floor(start_pos.z / 2.0f));
-        // glm::i32vec3 last_block_pos(std::floor(end_pos.x / 2.0f), std::floor(end_pos.y / 2.0f), std::floor(end_pos.z / 2.0f));
+        glm::i32vec3 current_block_pos(glm::floor(start_pos));
+        glm::i32vec3 last_block_pos(glm::floor(end_pos));
 
-        // glm::vec3 ray = glm::normalize(end_pos - start_pos);
-        // glm::i32vec3 block_pos_step((ray.x >= 0) ? 1 : -1, (ray.y >= 0) ? 1 : -1, (ray.z >= 0) ? 1 : -1);
+        glm::vec3 ray = glm::normalize(end_pos - start_pos);
+        glm::i32vec3 block_pos_step((ray.x >= 0) ? 1 : -1, (ray.y >= 0) ? 1 : -1, (ray.z >= 0) ? 1 : -1);
 
-        // glm::i32vec3 next_block_pos = current_block_pos + block_pos_step;
-        // // Distance along the ray to the next voxel border from the current position (tMaxX, tMaxY, tMaxZ).
-        // glm::vec3 next_block_boundary(next_block_pos.x * 2.0f, next_block_pos.y * 2.0f, next_block_pos.z * 2.0f);
+        glm::vec3 next_block_boundary(current_block_pos + block_pos_step);
+        glm::vec3 t_delta = glm::abs(1.0f / ray);
+        glm::vec3 dist(
+            (ray.x >= 0) ? (current_block_pos.x + 1 - start_pos.x) : (start_pos.x - current_block_pos.x),
+            (ray.y >= 0) ? (current_block_pos.y + 1 - start_pos.y) : (start_pos.y - current_block_pos.y),
+            (ray.z >= 0) ? (current_block_pos.z + 1 - start_pos.z) : (start_pos.z - current_block_pos.z)
+        );
+        glm::vec3 t_max = t_delta * dist;
 
-        // if (sideDist.x < sideDist.y) {
-        //     if (sideDist.x < sideDist.z) {
-        //         sideDist.x += deltaDist.x;
-        //         mapPos.x += rayStep.x;
-        //     } else {
-        //         sideDist.z += deltaDist.z;
-        //         mapPos.z += rayStep.z;
-        //     }
-        // } else {
-        //     if (sideDist.y < sideDist.z) {
-        //         sideDist.y += deltaDist.y;
-        //         mapPos.y += rayStep.y;
-        //     } else {
-        //         sideDist.z += deltaDist.z;
-        //         mapPos.z += rayStep.z;
-        //     }
-        // }
+        i32 stepped_index = -1;
+        uint safeguard = 32;
+        while (current_block_pos != last_block_pos) {
+            if (t_max.x < t_max.y) {
+                if (t_max.x < t_max.z) {
+                    t_max.x += t_delta.x;
+                    current_block_pos.x += block_pos_step.x;
+                    stepped_index = 0;
+                } else {
+                    t_max.z += t_delta.z;
+                    current_block_pos.z += block_pos_step.z;
+                    stepped_index = 2;
+                }
+            } else {
+                if (t_max.y < t_max.z) {
+                    t_max.y += t_delta.y;
+                    current_block_pos.y += block_pos_step.y;
+                    stepped_index = 1;
+                } else {
+                    t_max.z += t_delta.z;
+                    current_block_pos.z += block_pos_step.z;
+                    stepped_index = 2;
+                }
+            }
+            if (get_block_at(current_block_pos) != 0) {
+                result.hit = true;
+                result.block_pos = current_block_pos;
+                if (stepped_index != -1)
+                    result.block_normal[stepped_index] = -block_pos_step[stepped_index];
+                break;
+            }
+            if (safeguard == 0) break;
+            safeguard--; // this kinda sucks but i cant figure out why the issue is actually happening
+        }
 
         return result;
     }

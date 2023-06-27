@@ -43,6 +43,7 @@ voksel_source_files = [
   'src/client/renderer/persistent_buffer.cpp',
   'src/client/renderer/imgui_impl_voksel.cpp',
   'src/client/renderer/context.cpp',
+  'src/client/renderer/box_renderer.cpp',
   'src/client/renderer/chunk_renderer.cpp',
   'src/client/renderer/chunk_mesh_builder.cpp',
 
@@ -57,11 +58,13 @@ glslc = find_program('glslc')
 
 vert_shaders = [
   'res/shaders/src/chunk.vert.glsl',
+  'res/shaders/src/box.vert.glsl',
   'res/shaders/src/imgui.vert.glsl',
 ]
 
 frag_shaders = [
   'res/shaders/src/chunk.frag.glsl',
+  'res/shaders/src/box.frag.glsl',
   'res/shaders/src/imgui.frag.glsl',
 ]
 

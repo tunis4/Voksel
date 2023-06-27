@@ -3,12 +3,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "../world/world.hpp"
 #include "../util/util.hpp"
 
 namespace client {
     class Camera {
     public:
-        static constexpr f32 normal_free_speed = 5 * 2;
+        static constexpr f32 normal_free_speed = 5;
         static constexpr f32 slow_free_speed = normal_free_speed / 2;
         static constexpr f32 fast_free_speed = normal_free_speed * 2;
 
@@ -34,6 +35,8 @@ namespace client {
         f32 m_last_x, m_last_y;
         bool m_first_mouse = true;
 
+        world::RayCastResult m_ray_cast {};
+
         explicit Camera(glm::vec3 position);
 
         void update_matrices(usize window_width, usize window_height);
@@ -44,7 +47,7 @@ namespace client {
         void set_free(bool free);
 
         inline glm::vec3 pos() { return !m_free_cam ? m_pos : m_free_pos; }
-        inline glm::i32vec3 block_pos() { auto p = pos(); return glm::i32vec3(p.x / 2.0f, p.y / 2.0f, p.z / 2.0f); }
+        inline glm::i32vec3 block_pos() { return glm::floor(pos()); }
 
         struct Frustum {
             enum Planes {

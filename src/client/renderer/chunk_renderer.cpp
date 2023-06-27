@@ -1,6 +1,7 @@
 #include "chunk_renderer.hpp"
 #include "context.hpp"
 #include "chunk_mesh_builder.hpp"
+#include "box_renderer.hpp"
 #include "../client.hpp"
 
 #include <cstring>
@@ -27,13 +28,13 @@ namespace render {
         sampler_layout_binding.pImmutableSamplers = nullptr;
         sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		VkDescriptorSetLayoutBindingFlagsCreateInfo set_layout_binding_flags {};
-		set_layout_binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		set_layout_binding_flags.bindingCount = 2;
-		constexpr std::array descriptor_binding_flags = std::to_array<VkDescriptorBindingFlags>({
-			0, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
-		});
-		set_layout_binding_flags.pBindingFlags = descriptor_binding_flags.data();
+        VkDescriptorSetLayoutBindingFlagsCreateInfo set_layout_binding_flags {};
+        set_layout_binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        set_layout_binding_flags.bindingCount = 2;
+        constexpr std::array descriptor_binding_flags = std::to_array<VkDescriptorBindingFlags>({
+            0, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+        });
+        set_layout_binding_flags.pBindingFlags = descriptor_binding_flags.data();
 
         std::array bindings = std::to_array<VkDescriptorSetLayoutBinding>({ ub_layout_binding, sampler_layout_binding });
         VkDescriptorSetLayoutCreateInfo layout_info {};
@@ -47,10 +48,10 @@ namespace render {
         for (auto &frame : m_per_frame)
             frame.uniform_buffer.create(m_context, sizeof(UniformBuffer), sizeof(UniformBuffer), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
         
-		VkDescriptorSetVariableDescriptorCountAllocateInfo variable_descriptor_count_alloc_info {};
-		variable_descriptor_count_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
-		variable_descriptor_count_alloc_info.descriptorSetCount = 1;
-		variable_descriptor_count_alloc_info.pDescriptorCounts = &num_textures;
+        VkDescriptorSetVariableDescriptorCountAllocateInfo variable_descriptor_count_alloc_info {};
+        variable_descriptor_count_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+        variable_descriptor_count_alloc_info.descriptorSetCount = 1;
+        variable_descriptor_count_alloc_info.pDescriptorCounts = &num_textures;
 
         VkDescriptorSetAllocateInfo alloc_info {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -104,10 +105,10 @@ namespace render {
             .finish(m_context.render_pass);
 
         constexpr usize vertex_buffer_size = 128 * 1024 * 1024;
-        m_vertex_buffer.create(m_context, vertex_buffer_size, 64 * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        m_vertex_buffer.create(m_context, vertex_buffer_size, 64 * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, PersistentBuffer::WRITE, true);
 
         m_mesh_builder = new ChunkMeshBuilder(this);
-        m_last_camera_pos = glm::i32vec3(1024, 1024, 1024); // so that it immediately gets reset properly
+        m_last_camera_pos = glm::i32vec3(1024, 1024, 1024); // far away so that it immediately gets reset properly
         m_timer = 0.0f;
     }
 
@@ -160,6 +161,21 @@ namespace render {
         vmaUnmapMemory(m_context.allocator, staging_buffer_allocation);
         vmaDestroyBuffer(m_context.allocator, staging_buffer, staging_buffer_allocation);
     }
+    
+    void ChunkRenderer::remesh_chunk_urgent(glm::i32vec3 chunk_pos) {
+        auto remove = std::partition(m_chunks_meshed.begin(), m_chunks_meshed.end(), [=] (ChunkRender *chunk) {
+            return chunk->m_chunk_pos != chunk_pos;
+        });
+        if (remove != m_chunks_meshed.end()) {
+            ChunkRender *chunk = *remove;
+            m_context.buffer_deletions.push(BufferDeletion(chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation));
+            m_context.buffer_deletions.push(BufferDeletion(chunk->m_index_buffer, chunk->m_index_buffer_allocation));
+            chunk->m_vertex_buffer = nullptr; chunk->m_vertex_buffer_allocation = nullptr;
+            chunk->m_index_buffer = nullptr; chunk->m_index_buffer_allocation = nullptr;
+            m_chunks_to_mesh_urgent.push_back(chunk);
+            m_chunks_meshed.erase(remove, m_chunks_meshed.end());
+        }
+    }
 
     void ChunkRenderer::update(f64 delta_time) {
         m_timer += (f32)delta_time;
@@ -185,8 +201,10 @@ namespace render {
     }
     
     void ChunkRenderer::record(VkCommandBuffer cmd, uint frame_index) {
+        auto world = client::Client::get()->world();
+        
         ImGui::Begin("Chunk Renderer", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-        static i32 render_distance = 8;
+        static i32 render_distance = 5;
         ImGui::SliderInt("Render distance", &render_distance, 1, 32);
         static bool pause_reiteration = false;
         ImGui::Checkbox("Pause reiteration", &pause_reiteration);
@@ -204,8 +222,8 @@ namespace render {
         // ImGui::SliderFloat("Fog far", &fog_far, 32, 512);
         // ub.fog_near = fog_near;
         // ub.fog_far = fog_far;
-        ub.fog_near = ((f32)render_distance - 2.5f) * 64;
-        ub.fog_far = ((f32)render_distance - 2.0f) * 64;
+        ub.fog_near = ((f32)render_distance - 2.5f) * 32;
+        ub.fog_far = ((f32)render_distance - 2.0f) * 32;
         ub.timer = m_timer;
         frame.uniform_buffer.upload_data(m_context, &ub, sizeof(UniformBuffer), 0);
 
@@ -218,8 +236,6 @@ namespace render {
         if (reiterate)
             m_last_camera_pos = m_context.camera->block_pos();
         glm::i32vec3 camera_chunk_pos = util::signed_i32vec3_divide(m_context.camera->block_pos(), 32).first;
-
-        auto world = client::Client::get()->world();
 
         if (reiterate) {
             auto remove = std::partition(m_chunks_meshed.begin(), m_chunks_meshed.end(), [=] (ChunkRender *chunk) {
@@ -237,12 +253,26 @@ namespace render {
             }
         }
 
+        if (!m_chunks_to_mesh_urgent.empty()) {
+            while (true) {
+                if (m_chunks_to_mesh_urgent.empty())
+                    break;
+                
+                auto chunk = m_chunks_to_mesh_urgent.back();
+                m_mesh_builder->m_current = chunk;
+                m_mesh_builder->build();
+                allocate_chunk_mesh(chunk, m_mesh_builder->m_vertices, m_mesh_builder->m_indices);
+                m_chunks_meshed.push_back(chunk);
+                m_chunks_to_mesh_urgent.pop_back();
+            }
+        }
+
         for (auto chunk : m_chunks_meshed) {
             if (chunk->m_vertex_buffer == nullptr)
                 continue;
 
-            glm::vec3 min = glm::vec3(chunk->m_chunk_pos) * 64.0f;
-            glm::vec3 max = glm::vec3(chunk->m_chunk_pos + glm::i32vec3(1)) * 64.0f;
+            glm::vec3 min = glm::vec3(chunk->m_chunk_pos) * 32.0f;
+            glm::vec3 max = glm::vec3(chunk->m_chunk_pos + glm::i32vec3(1)) * 32.0f;
             if (!m_context.camera->m_frustum.is_box_visible(min, max))
                 continue;
 
@@ -251,7 +281,7 @@ namespace render {
             vkCmdBindIndexBuffer(cmd, chunk->m_index_buffer, 0, VK_INDEX_TYPE_UINT32);
         
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(chunk->m_chunk_pos.x * 64, chunk->m_chunk_pos.y * 64, chunk->m_chunk_pos.z * 64));
+            model = glm::translate(model, glm::vec3(chunk->m_chunk_pos.x * 32, chunk->m_chunk_pos.y * 32, chunk->m_chunk_pos.z * 32));
 
             PushConstants push_constants;
             push_constants.model = model;

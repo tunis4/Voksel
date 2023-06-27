@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 #include "texture.hpp"
+#include "box_renderer.hpp"
 #include "imgui_impl_voksel.hpp"
 
 #include <array>
@@ -261,7 +262,7 @@ namespace render {
     }
 
     void Renderer::create_surface() {
-        if (glfwCreateWindowSurface(m_context.instance, m_context.window->glfw_window(), nullptr, &m_context.surface) != VK_SUCCESS)
+        if (glfwCreateWindowSurface(m_context.instance, m_context.window->m_glfw_window, nullptr, &m_context.surface) != VK_SUCCESS)
             throw std::runtime_error("Failed to create window surface");
     }
 
@@ -380,7 +381,7 @@ namespace render {
         style.FrameRounding = 3.0f;
         style.WindowRounding = 3.0f;
 
-        ImGui_ImplGlfw_InitForVulkan(m_context.window->glfw_window(), true);
+        ImGui_ImplGlfw_InitForVulkan(m_context.window->m_glfw_window, true);
         ImGui_ImplVoksel_InitInfo init_info {};
         init_info.Context = &m_context;
         init_info.DescriptorPool = m_context.descriptor_pool;
@@ -467,6 +468,7 @@ namespace render {
             vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
             entt::locator<render::ChunkRenderer>::value().record(command_buffer, m_frame_index);
+            entt::locator<render::BoxRenderer>::value().record(command_buffer, m_frame_index);
             
             ImGui::End();
             ImGui::Render();

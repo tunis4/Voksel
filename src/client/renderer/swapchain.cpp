@@ -60,7 +60,7 @@ namespace render {
 
         VkSurfaceFormatKHR surface_format = choose_surface_format(swapchain_support.formats);
         VkPresentModeKHR present_mode = choose_present_mode(swapchain_support.present_modes);
-        VkExtent2D extent = choose_extent(swapchain_support.capabilities, m_context.window->width(), m_context.window->height());
+        VkExtent2D extent = choose_extent(swapchain_support.capabilities, m_context.window->m_width, m_context.window->m_height);
 
         u32 image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 && image_count > swapchain_support.capabilities.maxImageCount)

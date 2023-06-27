@@ -12,12 +12,14 @@ namespace world {
 
     class World {
         u64 m_seed;
+
         FastNoise::SmartNode<FastNoise::Simplex> m_ridged_simplex_noise;
         FastNoise::SmartNode<FastNoise::FractalRidged> m_ridged_noise;
         FastNoise::SmartNode<FastNoise::Simplex> m_simplex_noise;
         FastNoise::SmartNode<FastNoise::FractalFBm> m_fractal_noise;
         FastNoise::SmartNode<FastNoise::MaxSmooth> m_max_smooth;
-        FastNoise::SmartNode<> m_cellular_caves_noise;
+
+        FastNoise::SmartNode<> m_cave_noise;
         
         std::unordered_map<glm::i32vec3, std::shared_ptr<Chunk>> m_chunks;
 
@@ -31,13 +33,13 @@ namespace world {
         block::NID get_block_at(glm::i32vec3 pos);
         void set_block_at(glm::i32vec3 pos, block::NID block_nid);
 
-        // Casts a continuous ray through the world using the DDA method
+        // Casts a continuous ray through the world using the DDA method (max distance 32 blocks)
         RayCastResult cast_ray(glm::vec3 start_pos, glm::vec3 end_pos);
     };
     
     struct RayCastResult {
         bool hit;
         glm::i32vec3 block_pos;
-        block::Face block_face;
+        glm::i32vec3 block_normal;
     };
 }

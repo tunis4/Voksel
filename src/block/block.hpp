@@ -3,7 +3,6 @@
 #include <string>
 
 #include "../util/util.hpp"
-#include "src/client/renderer/texture.hpp"
 
 namespace block {
     enum class Face {

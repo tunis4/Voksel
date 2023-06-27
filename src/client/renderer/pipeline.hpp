@@ -25,9 +25,9 @@ namespace render {
         VkPipelineDynamicStateCreateInfo m_dynamic_state {};
         VkPipelineLayout m_layout;
 
-        VkVertexInputBindingDescription *m_vertex_input_binding_description;
-        VkVertexInputAttributeDescription *m_vertex_input_attribute_descriptions;
-        usize m_vertex_input_num_attribute_descriptions;
+        VkVertexInputBindingDescription *m_vertex_input_binding_description = nullptr;
+        VkVertexInputAttributeDescription *m_vertex_input_attribute_descriptions = nullptr;
+        usize m_vertex_input_num_attribute_descriptions = 0;
 
         VkShaderModule create_shader_module(const std::string &filename);
 
@@ -57,6 +57,8 @@ namespace render {
             return *this;
         }
 
+        PipelineBuilder& no_vertex_input_info();
+        
         PipelineBuilder& input_assembly();
         PipelineBuilder& viewport_state();
         PipelineBuilder& rasterizer(uint cull_mode = VK_CULL_MODE_BACK_BIT);

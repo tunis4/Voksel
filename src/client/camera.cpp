@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "src/client/client.hpp"
 
 namespace client {
     Camera::Camera(glm::vec3 position) : m_pos(position) {

@@ -25,7 +25,7 @@ namespace render {
 
         inline ChunkVertex() {};
         inline ChunkVertex(glm::vec3 pos, u32 tex_coordinate_index, u32 tex_index, u8 ao) {
-            m_pos = pos;
+            m_pos = pos / 2.0f + 0.5f;
             m_tex = ((tex_coordinate_index & 0b11) << 30) | (tex_index & ~((u32)0b11 << 30));
             m_ao = 1.0f / (ao + 1);
         }
@@ -100,12 +100,14 @@ namespace render {
         glm::i32vec3 m_last_camera_pos;
         std::vector<ChunkRender*> m_chunks_meshed;
         std::vector<ChunkRender*> m_chunks_to_mesh; // must be sorted by distance
+        std::vector<ChunkRender*> m_chunks_to_mesh_urgent; // will pause rendering until these are finished meshing
 
         ChunkRenderer(Context &context) : m_context(context) {}
 
         void init();
         void cleanup();
         void allocate_chunk_mesh(ChunkRender *chunk, const std::vector<ChunkVertex> &vertices, const std::vector<u32> &indices);
+        void remesh_chunk_urgent(glm::i32vec3 chunk_pos);
         void update(f64 delta_time);
         void record(VkCommandBuffer cmd, uint frame_index);
     };

@@ -28,10 +28,10 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 const vec2 tex_coords[4] = vec2[4](
-    vec2(0, 0),
-    vec2(0, 1),
-    vec2(1, 0),
-    vec2(1, 1)
+    vec2(0.0, 0.0),
+    vec2(0.0, 1.0),
+    vec2(1.0, 0.0),
+    vec2(1.0, 1.0)
 );
 
 void main() {
@@ -42,9 +42,9 @@ void main() {
     vec4 local_pos = vec4(in_pos, 1.0);
     vec4 world_pos = pc.model * local_pos;
 
-    if (tex_index == 11) {
-        world_pos.y += sin((ub.timer + world_pos.x) * 1.5) / 11.0f;
-        world_pos.y += cos((ub.timer + world_pos.z) * 1.5) / 10.0f;
+    if (tex_index == 12) {
+        world_pos.y += sin((ub.timer + world_pos.x * world_pos.z) * 1.5) / 22.0;
+        world_pos.y += cos((ub.timer + world_pos.z) * 1.5) / 20.0;
         world_pos.y -= 0.2;
     }
 
@@ -52,5 +52,5 @@ void main() {
     out_view_pos = view_pos.xyz;
     gl_Position = ub.projection * view_pos;
 
-    out_ao = 1 - in_ao;
+    out_ao = 1.0 - in_ao;
 }
