@@ -9,6 +9,7 @@ namespace render {
         void create_image(VmaAllocationInfo *alloc_info, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaAllocationCreateFlags alloc_flags);
         void transition_image_layout(VkImageLayout old_layout, VkImageLayout new_layout);
         void copy_buffer_to_image(VkBuffer buffer);
+        void generate_mipmaps();
 
     public:
         usize m_width;

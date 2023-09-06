@@ -9,11 +9,10 @@ namespace client {
     // Singleton
     class Client {
         Window *m_window;
-        render::Renderer m_renderer;
-        world::World *m_world;
         Camera *m_camera;
+        world::World *m_world;
         
-        f64 m_delta_time;
+        f32 m_delta_time;
 
     public:
         Client();
@@ -25,5 +24,7 @@ namespace client {
 
         void loop();
         void process_input();
+
+        glm::vec3 resolve_movement(glm::vec3 old_pos, glm::vec3 new_pos, glm::vec3 min_bounds, glm::vec3 max_bounds);
     };
 }

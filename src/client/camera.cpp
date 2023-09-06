@@ -7,8 +7,8 @@ namespace client {
         m_yaw = -90;
         m_pitch = 0;
         m_front = glm::vec3(0, 0, 1);
-        m_mouse_sensitivity = 0.1;
-        m_fov = 90;
+        m_mouse_sensitivity = 0.15;
+        m_fov = default_fov;
         m_free_speed = normal_free_speed;
         update_vectors();
     }

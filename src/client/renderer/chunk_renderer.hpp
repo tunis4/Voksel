@@ -6,28 +6,19 @@
 #include "../../world/chunk.hpp"
 
 namespace render {
-    // structure that ties a chunk with information for rendering it. managed by the ChunkRenderer class
-    struct ChunkRender {
-        glm::i32vec3 m_chunk_pos;
-        world::Chunk *m_chunk;
-
-        VkBuffer m_vertex_buffer;
-        VmaAllocation m_vertex_buffer_allocation;
-        VkBuffer m_index_buffer;
-        VmaAllocation m_index_buffer_allocation;
-        usize m_num_indices;
-    };
-    
     struct ChunkVertex {
         glm::vec3 m_pos;
         u32 m_tex; // first 30 bits for texture index, last 2 bits for coordinate index
-        f32 m_ao;
+        glm::vec4 m_light;
 
         inline ChunkVertex() {};
-        inline ChunkVertex(glm::vec3 pos, u32 tex_coordinate_index, u32 tex_index, u8 ao) {
+        inline ChunkVertex(glm::vec3 pos, u32 tex_coordinate_index, u32 tex_index, u16 a, u16 b, u16 c, u16 d) {
             m_pos = pos / 2.0f + 0.5f;
             m_tex = ((tex_coordinate_index & 0b11) << 30) | (tex_index & ~((u32)0b11 << 30));
-            m_ao = 1.0f / (ao + 1);
+            m_light.r = ((a >>  0 & 0xF) + (b >>  0 & 0xF) + (c >>  0 & 0xF) + (d >>  0 & 0xF)) / 60.0f;
+            m_light.g = ((a >>  4 & 0xF) + (b >>  4 & 0xF) + (c >>  4 & 0xF) + (d >>  4 & 0xF)) / 60.0f;
+            m_light.b = ((a >>  8 & 0xF) + (b >>  8 & 0xF) + (c >>  8 & 0xF) + (d >>  8 & 0xF)) / 60.0f;
+            m_light.a = ((a >> 12 & 0xF) + (b >> 12 & 0xF) + (c >> 12 & 0xF) + (d >> 12 & 0xF)) / 60.0f;
         }
 
         static auto alloc_binding_description() {
@@ -53,10 +44,35 @@ namespace render {
 
             d[2].binding = 0;
             d[2].location = 2;
-            d[2].format = VK_FORMAT_R32_SFLOAT;
-            d[2].offset = offsetof(ChunkVertex, m_ao);
+            d[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            d[2].offset = offsetof(ChunkVertex, m_light);
             return d;
         }
+    };
+
+    // structure that ties a chunk with information for rendering it. managed by the ChunkRenderer class
+    struct ChunkRender {
+        glm::i32vec3 m_chunk_pos;
+        world::Chunk *m_chunk;
+
+        VkBuffer m_vertex_buffer;
+        VmaAllocation m_vertex_buffer_allocation;
+        usize m_num_vertices;
+        VkBuffer m_index_buffer;
+        VmaAllocation m_index_buffer_allocation;
+        usize m_num_indices;
+
+        inline usize used_vram() {
+            return (m_num_indices * sizeof(u32)) + (m_num_vertices * sizeof(ChunkVertex));
+        }
+    };
+
+    struct ChunkDIIC {
+        u32 index_count;
+        u32 instance_count;
+        u32 first_index;
+        i32 vertex_offset;
+        u32 first_instance;
     };
 
     class ChunkMeshBuilder;
@@ -76,6 +92,9 @@ namespace render {
         };
 
         struct PushConstants {
+            static constexpr VkShaderStageFlags stage_flags = VK_SHADER_STAGE_VERTEX_BIT;
+
+            // for vertex shader
             alignas(16) glm::mat4 model;
         };
 
@@ -93,10 +112,14 @@ namespace render {
         VkPipelineLayout m_pipeline_layout;
         
         PersistentBuffer m_vertex_buffer;
+        PersistentBuffer m_diic_buffer;
 
         ChunkMeshBuilder *m_mesh_builder;
+        usize m_used_vram;
 
         f32 m_timer;
+        i32 m_render_distance;
+        bool m_pause_reiteration;
         glm::i32vec3 m_last_camera_pos;
         std::vector<ChunkRender*> m_chunks_meshed;
         std::vector<ChunkRender*> m_chunks_to_mesh; // must be sorted by distance

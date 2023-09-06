@@ -1,5 +1,5 @@
 #include "block.hpp"
-#include "src/client/renderer/texture.hpp"
+#include "../client/renderer/texture.hpp"
 
 #include <array>
 #include <entt/entt.hpp>
@@ -8,7 +8,11 @@ using namespace entt::literals;
 namespace block {
     BlockData::BlockData(std::string id) {
         m_id = id;
+
+        // set default values
+        m_shape = Shape::FULL_BLOCK;
         set_transparency(false);
+        m_collidable = true;
     }
 
     void BlockData::set_textures(u32 top_face, u32 bottom_face, u32 north_face, 
@@ -37,60 +41,92 @@ namespace block {
 
         BlockData void_block("void");
         void_block.set_textures(0);
+        void_block.set_transparency(true);
+        void_block.m_collidable = false;
         block_data_registry.push_back(void_block);
         
-        BlockData stone_block("stone");
+        BlockData stone("stone");
         u32 stone_texture = texture_manager.load_texture("stone");
-        stone_block.set_textures(stone_texture);
-        block_data_registry.push_back(stone_block);
+        stone.set_textures(stone_texture);
+        block_data_registry.push_back(stone);
         
-        BlockData cobblestone_block("cobblestone");
+        BlockData cobblestone("cobblestone");
         u32 cobblestone_texture = texture_manager.load_texture("cobblestone");
-        cobblestone_block.set_textures(cobblestone_texture);
-        block_data_registry.push_back(cobblestone_block);
+        cobblestone.set_textures(cobblestone_texture);
+        block_data_registry.push_back(cobblestone);
         
-        BlockData dirt_block("dirt");
+        BlockData dirt("dirt");
         u32 dirt_texture = texture_manager.load_texture("dirt");
-        dirt_block.set_textures(dirt_texture);
-        block_data_registry.push_back(dirt_block);
+        dirt.set_textures(dirt_texture);
+        block_data_registry.push_back(dirt);
         
-        BlockData grass_block("grass");
-        u32 grass_top_texture = texture_manager.load_texture("grass_top");
-        u32 grass_side_texture = texture_manager.load_texture("grass_side");
-        grass_block.set_textures(grass_top_texture, dirt_texture, grass_side_texture);
+        BlockData grass_block("grass_block");
+        u32 grass_block_top_texture = texture_manager.load_texture("grass_block_top");
+        u32 grass_block_side_texture = texture_manager.load_texture("grass_block_side");
+        grass_block.set_textures(grass_block_top_texture, dirt_texture, grass_block_side_texture);
         block_data_registry.push_back(grass_block);
 
-        BlockData planks_block("planks");
+        BlockData planks("planks");
         u32 planks_texture = texture_manager.load_texture("planks");
-        planks_block.set_textures(planks_texture);
-        block_data_registry.push_back(planks_block);
+        planks.set_textures(planks_texture);
+        block_data_registry.push_back(planks);
         
-        BlockData wood_log_block("wood_log");
+        BlockData wood_log("wood_log");
         u32 wood_log_top_texture = texture_manager.load_texture("wood_log_top");
         u32 wood_log_side_texture = texture_manager.load_texture("wood_log_side");
-        wood_log_block.set_textures(wood_log_top_texture, wood_log_top_texture, wood_log_side_texture);
-        block_data_registry.push_back(wood_log_block);
+        wood_log.set_textures(wood_log_top_texture, wood_log_top_texture, wood_log_side_texture);
+        block_data_registry.push_back(wood_log);
         
-        BlockData sand_block("sand");
+        BlockData sand("sand");
         u32 sand_texture = texture_manager.load_texture("sand");
-        sand_block.set_textures(sand_texture);
-        block_data_registry.push_back(sand_block);
+        sand.set_textures(sand_texture);
+        block_data_registry.push_back(sand);
         
-        BlockData glass_block("glass");
+        BlockData glass("glass");
         u32 glass_texture = texture_manager.load_texture("glass");
-        glass_block.set_textures(glass_texture);
-        glass_block.set_transparency(true);
-        block_data_registry.push_back(glass_block);
+        glass.set_textures(glass_texture);
+        glass.set_transparency(true);
+        block_data_registry.push_back(glass);
 
-        BlockData bricks_block("bricks");
+        BlockData bricks("bricks");
         u32 bricks_texture = texture_manager.load_texture("bricks");
-        bricks_block.set_textures(bricks_texture);
-        block_data_registry.push_back(bricks_block);
+        bricks.set_textures(bricks_texture);
+        block_data_registry.push_back(bricks);
         
-        BlockData water_block("water");
+        BlockData water("water");
         u32 water_texture = texture_manager.load_texture("water");
-        water_block.set_textures(water_texture);
-        water_block.set_transparency(true);
-        block_data_registry.push_back(water_block);
+        water.set_textures(water_texture);
+        water.set_transparency(true);
+        water.m_collidable = false;
+        block_data_registry.push_back(water);
+
+        BlockData grass("grass");
+        u32 grass_texture = texture_manager.load_texture("grass");
+        grass.set_textures(grass_texture);
+        grass.set_transparency(true);
+        grass.m_shape = Shape::X_SHAPE;
+        grass.m_collidable = false;
+        block_data_registry.push_back(grass);
+        
+        BlockData leaves("leaves");
+        u32 leaves_texture = texture_manager.load_texture("leaves");
+        leaves.set_textures(leaves_texture);
+        block_data_registry.push_back(leaves);
+
+        BlockData dandelion("dandelion");
+        u32 dandelion_texture = texture_manager.load_texture("dandelion");
+        dandelion.set_textures(dandelion_texture);
+        dandelion.set_transparency(true);
+        dandelion.m_shape = Shape::X_SHAPE;
+        dandelion.m_collidable = false;
+        block_data_registry.push_back(dandelion);
+
+        BlockData rose("rose");
+        u32 rose_texture = texture_manager.load_texture("rose");
+        rose.set_textures(rose_texture);
+        rose.set_transparency(true);
+        rose.m_shape = Shape::X_SHAPE;
+        rose.m_collidable = false;
+        block_data_registry.push_back(rose);
     }
 }

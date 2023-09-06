@@ -104,18 +104,21 @@ namespace render {
             .layout<PushConstants>(&m_pipeline_layout, &m_descriptor_set_layout)
             .finish(m_context.render_pass);
 
-        constexpr usize vertex_buffer_size = 128 * 1024 * 1024;
-        m_vertex_buffer.create(m_context, vertex_buffer_size, 64 * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, PersistentBuffer::WRITE, true);
+        // constexpr usize vertex_buffer_size = 128 * 1024 * 1024;
+        // m_vertex_buffer.create(m_context, vertex_buffer_size, 64 * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, PersistentBuffer::WRITE, true);
 
         m_mesh_builder = new ChunkMeshBuilder(this);
+        m_used_vram = 0;
         m_last_camera_pos = glm::i32vec3(1024, 1024, 1024); // far away so that it immediately gets reset properly
         m_timer = 0.0f;
+        m_render_distance = 5;
+        m_pause_reiteration = false;
     }
 
     void ChunkRenderer::cleanup() {
         delete m_mesh_builder;
 
-        m_vertex_buffer.destroy(m_context);
+        // m_vertex_buffer.destroy(m_context);
 
         for (auto chunk : m_chunks_meshed) {
             vmaDestroyBuffer(m_context.allocator, chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation);
@@ -150,16 +153,21 @@ namespace render {
         vmaMapMemory(m_context.allocator, staging_buffer_allocation, &staging_buffer_mapped);
 
         std::memcpy(staging_buffer_mapped, vertices.data(), vertex_buffer_size);
+        vmaFlushAllocation(m_context.allocator, staging_buffer_allocation, 0, vertex_buffer_size);
         m_context.create_buffer(&chunk->m_vertex_buffer, &chunk->m_vertex_buffer_allocation, nullptr, vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 0);
         m_context.copy_buffer(staging_buffer, chunk->m_vertex_buffer, vertex_buffer_size);
+        chunk->m_num_vertices = vertices.size();
 
         std::memcpy(staging_buffer_mapped, indices.data(), index_buffer_size);
+        vmaFlushAllocation(m_context.allocator, staging_buffer_allocation, 0, index_buffer_size);
         m_context.create_buffer(&chunk->m_index_buffer, &chunk->m_index_buffer_allocation, nullptr, index_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 0);
         m_context.copy_buffer(staging_buffer, chunk->m_index_buffer, index_buffer_size);
         chunk->m_num_indices = indices.size();
 
         vmaUnmapMemory(m_context.allocator, staging_buffer_allocation);
         vmaDestroyBuffer(m_context.allocator, staging_buffer, staging_buffer_allocation);
+
+        m_used_vram += vertex_buffer_size + index_buffer_size;
     }
     
     void ChunkRenderer::remesh_chunk_urgent(glm::i32vec3 chunk_pos) {
@@ -168,6 +176,7 @@ namespace render {
         });
         if (remove != m_chunks_meshed.end()) {
             ChunkRender *chunk = *remove;
+            m_used_vram -= chunk->used_vram();
             m_context.buffer_deletions.push(BufferDeletion(chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation));
             m_context.buffer_deletions.push(BufferDeletion(chunk->m_index_buffer, chunk->m_index_buffer_allocation));
             chunk->m_vertex_buffer = nullptr; chunk->m_vertex_buffer_allocation = nullptr;
@@ -181,7 +190,7 @@ namespace render {
         m_timer += (f32)delta_time;
 
         i64 time_spent = 0;
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start = std::chrono::steady_clock::now();
         if (!m_chunks_to_mesh.empty()) {
             while (time_spent < 10000) {
                 if (m_chunks_to_mesh.empty())
@@ -193,7 +202,7 @@ namespace render {
                 allocate_chunk_mesh(chunk, m_mesh_builder->m_vertices, m_mesh_builder->m_indices);
                 m_chunks_meshed.push_back(chunk);
                 m_chunks_to_mesh.pop_back();
-                auto stop = std::chrono::high_resolution_clock::now();
+                auto stop = std::chrono::steady_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
                 time_spent += duration.count();
             }
@@ -203,11 +212,10 @@ namespace render {
     void ChunkRenderer::record(VkCommandBuffer cmd, uint frame_index) {
         auto world = client::Client::get()->world();
         
-        ImGui::Begin("Chunk Renderer", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-        static i32 render_distance = 5;
-        ImGui::SliderInt("Render distance", &render_distance, 1, 32);
-        static bool pause_reiteration = false;
-        ImGui::Checkbox("Pause reiteration", &pause_reiteration);
+        ImGui::Begin("Chunk Renderer");
+        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.5f);
+        ImGui::SliderInt("Render distance", &m_render_distance, 4, 32);
+        ImGui::Checkbox("Pause reiteration", &m_pause_reiteration);
 
         PerFrame &frame = m_per_frame[frame_index];
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
@@ -215,15 +223,15 @@ namespace render {
         UniformBuffer ub {};
         ub.view = m_context.camera->m_view_matrix;
         ub.projection = m_context.camera->m_projection_matrix;
-        ub.fog_color = glm::vec3(0.00143f, 0.35374f, 0.61868f);
+        ub.fog_color = entt::locator<render::Renderer>::value().m_fog_color;
         // static f32 fog_near = 352;
         // static f32 fog_far = 384;
         // ImGui::SliderFloat("Fog near", &fog_near, 32, 512);
         // ImGui::SliderFloat("Fog far", &fog_far, 32, 512);
         // ub.fog_near = fog_near;
         // ub.fog_far = fog_far;
-        ub.fog_near = ((f32)render_distance - 2.5f) * 32;
-        ub.fog_far = ((f32)render_distance - 2.0f) * 32;
+        ub.fog_near = ((f32)m_render_distance - 2.5f) * 32;
+        ub.fog_far = ((f32)m_render_distance - 2.0f) * 32;
         ub.timer = m_timer;
         frame.uniform_buffer.upload_data(m_context, &ub, sizeof(UniformBuffer), 0);
 
@@ -232,18 +240,19 @@ namespace render {
         usize num_vertices_rendered = 0;
         usize num_draw_calls = 0;
 
-        bool reiterate = !pause_reiteration && util::i32vec3_distance_squared(m_context.camera->block_pos(), m_last_camera_pos) > 32 * 32;
+        bool reiterate = !m_pause_reiteration && util::i32vec3_distance_squared(m_context.camera->block_pos(), m_last_camera_pos) > 32 * 32;
         if (reiterate)
             m_last_camera_pos = m_context.camera->block_pos();
         glm::i32vec3 camera_chunk_pos = util::signed_i32vec3_divide(m_context.camera->block_pos(), 32).first;
 
         if (reiterate) {
-            auto remove = std::partition(m_chunks_meshed.begin(), m_chunks_meshed.end(), [=] (ChunkRender *chunk) {
-                return util::i32vec3_distance_squared(camera_chunk_pos, chunk->m_chunk_pos) < render_distance * render_distance;
+            auto remove = std::partition(m_chunks_meshed.begin(), m_chunks_meshed.end(), [&] (ChunkRender *chunk) {
+                return util::i32vec3_distance_squared(camera_chunk_pos, chunk->m_chunk_pos) < m_render_distance * m_render_distance;
             });
             if (remove != m_chunks_meshed.end()) {
                 for (auto i = remove; i != m_chunks_meshed.end(); i++) {
                     ChunkRender *chunk = *i;
+                    m_used_vram -= chunk->used_vram();
                     m_context.buffer_deletions.push(BufferDeletion(chunk->m_vertex_buffer, chunk->m_vertex_buffer_allocation));
                     m_context.buffer_deletions.push(BufferDeletion(chunk->m_index_buffer, chunk->m_index_buffer_allocation));
                     delete chunk;
@@ -285,7 +294,7 @@ namespace render {
 
             PushConstants push_constants;
             push_constants.model = model;
-            vkCmdPushConstants(cmd, m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push_constants);
+            vkCmdPushConstants(cmd, m_pipeline_layout, PushConstants::stage_flags, 0, sizeof(PushConstants), &push_constants);
             
             vkCmdDrawIndexed(cmd, chunk->m_num_indices, 1, 0, 0, 0);
             num_vertices_rendered += chunk->m_num_indices;
@@ -297,10 +306,10 @@ namespace render {
                 delete chunk;
             m_chunks_to_mesh.clear();
 
-            for (i32 x = -render_distance; x < render_distance; x++) {
-                for (i32 y = -render_distance; y < render_distance; y++) {
-                    for (i32 z = -render_distance; z < render_distance; z++) {
-                        if (x * x + y * y + z * z >= render_distance * render_distance) // only check in a sphere
+            for (i32 x = -m_render_distance; x < m_render_distance; x++) {
+                for (i32 y = -m_render_distance; y < m_render_distance; y++) {
+                    for (i32 z = -m_render_distance; z < m_render_distance; z++) {
+                        if (x * x + y * y + z * z >= m_render_distance * m_render_distance) // only check in a sphere
                             continue;
                         
                         glm::i32vec3 chunk_pos = glm::i32vec3(x, y, z) + camera_chunk_pos;
@@ -323,7 +332,8 @@ namespace render {
         }
 
         ImGui::Text("Draw calls: %ld", num_draw_calls);
-        ImGui::Text("Vertices rendered: %ld", num_vertices_rendered);
+        ImGui::Text("Used VRAM: %.1f MiB", (f64)m_used_vram / 1024.0 / 1024.0);
+        ImGui::Text("Triangles rendered: %ld", num_vertices_rendered / 3);
         ImGui::Text("Chunks to mesh: %ld", m_chunks_to_mesh.size());
         ImGui::Text("Chunks meshed: %ld", m_chunks_meshed.size());
         ImGui::End();

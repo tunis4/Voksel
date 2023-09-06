@@ -6,21 +6,26 @@
 #include <glm/glm.hpp>
 
 namespace render {
-    class BoxRenderer {
+    class SkyRenderer {
         struct UniformBuffer {
             // for vertex shader
             alignas(16) glm::mat4 view;
             alignas(16) glm::mat4 projection;
 
             // for fragment shader
-            alignas( 4) f32 thickness;
+            alignas(16) glm::vec3 fog_color;
+            alignas( 4) f32 fog_near;
+            alignas( 4) f32 fog_far;
         };
 
         struct PushConstants {
-            static constexpr VkShaderStageFlags stage_flags = VK_SHADER_STAGE_VERTEX_BIT;
+            static constexpr VkShaderStageFlags stage_flags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
             // for vertex shader
             alignas(16) glm::mat4 model;
+
+            // for fragment shader
+            alignas(16) glm::vec3 color;
         };
 
         struct PerFrame {
@@ -33,16 +38,12 @@ namespace render {
         VkDescriptorSetLayout m_descriptor_set_layout;
         VkPipeline m_pipeline;
         VkPipelineLayout m_pipeline_layout;
-
-        bool m_show_box;
-        glm::vec3 m_box_pos;
     
     public:
-        BoxRenderer(Context &context) : m_context(context) {}
+        SkyRenderer(Context &context) : m_context(context) {}
 
         void init();
         void cleanup();
-        void set_box(bool show, glm::vec3 pos = glm::vec3(0.0f));
         void record(VkCommandBuffer cmd, uint frame_index);
     };
 };

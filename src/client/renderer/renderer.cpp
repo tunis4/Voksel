@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 #include "texture.hpp"
+#include "sky_renderer.hpp"
 #include "box_renderer.hpp"
 #include "imgui_impl_voksel.hpp"
 
@@ -14,6 +15,8 @@ namespace render {
     void Renderer::init(client::Window *window, client::Camera *camera) {
         m_context.window = window;
         m_context.camera = camera;
+
+        m_fog_color = glm::pow(glm::vec3(166, 209, 211) / 255.0f, glm::vec3(2.2));
 
         create_instance();
 #ifdef ENABLE_VK_VALIDATION_LAYERS
@@ -113,7 +116,7 @@ namespace render {
         create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         create_info.pApplicationInfo = &app_info;
 
-        auto extensions = get_required_extensions();
+        auto extensions = get_instance_extensions();
         create_info.enabledExtensionCount = extensions.size();
         create_info.ppEnabledExtensionNames = extensions.data();
 
@@ -133,7 +136,7 @@ namespace render {
         CHECK_VK(vkCreateInstance(&create_info, nullptr, &m_context.instance));
     }
 
-    std::vector<const char*> Renderer::get_required_extensions() {
+    std::vector<const char*> Renderer::get_instance_extensions() {
         u32 glfw_extension_count = 0;
         const char **glfw_extensions;
 
@@ -157,17 +160,21 @@ namespace render {
         VkPhysicalDeviceFeatures2 supported_features {};
         supported_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         supported_features.pNext = &supported_descriptor_indexing_features;
-
         vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);
+
+        VkFormatProperties format_properties {}; // blitting required for mipmap generation, TODO: make it optional
+        vkGetPhysicalDeviceFormatProperties(physical_device, VK_FORMAT_R8G8B8A8_SRGB, &format_properties);
+
         bool features_supported = supported_descriptor_indexing_features.runtimeDescriptorArray &&
             supported_descriptor_indexing_features.descriptorBindingVariableDescriptorCount &&
-            supported_descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing;
+            supported_descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing &&
+            (format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
         
         bool extensions_supported = check_device_extension_support(physical_device);
         bool swapchain_adequate = false;
         if (extensions_supported) {
-            SwapchainSupportDetails swap_chain_support = m_context.swapchain.query_support(physical_device, m_context.surface);
-            swapchain_adequate = !swap_chain_support.formats.empty() && !swap_chain_support.present_modes.empty();
+            SwapchainSupportDetails swapchain_support = m_context.swapchain.query_support(physical_device, m_context.surface);
+            swapchain_adequate = !swapchain_support.formats.empty() && !swapchain_support.present_modes.empty();
         }
 
         return m_context.queue_manager.are_families_complete() && features_supported && extensions_supported && swapchain_adequate;
@@ -369,17 +376,43 @@ namespace render {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.Fonts->AddFontFromFileTTF("res/thirdparty/Roboto-Regular.ttf", 18.0f);
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
         ImGuiStyle &style = ImGui::GetStyle();
         ImGui::StyleColorsDark(&style);
-        style.ChildBorderSize = 1.0f;
-        style.FrameBorderSize = 0.0f;
-        style.PopupBorderSize = 1.0f;
-        style.WindowBorderSize = 0.0f;
-        style.FrameRounding = 3.0f;
-        style.WindowRounding = 3.0f;
+        style.FrameRounding = 8.0f;
+        style.WindowRounding = 4.0f;
+        style.Colors[ImGuiCol_WindowBg]               = ImVec4(0.13f, 0.05f, 0.05f, 0.95f);
+        style.Colors[ImGuiCol_FrameBg]                = ImVec4(0.42f, 0.15f, 0.29f, 0.54f);
+        style.Colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.76f, 0.17f, 0.39f, 0.40f);
+        style.Colors[ImGuiCol_FrameBgActive]          = ImVec4(0.98f, 0.26f, 0.35f, 0.68f);
+        style.Colors[ImGuiCol_TitleBg]                = ImVec4(0.32f, 0.08f, 0.08f, 1.00f);
+        style.Colors[ImGuiCol_TitleBgActive]          = ImVec4(0.58f, 0.13f, 0.13f, 1.00f);
+        style.Colors[ImGuiCol_CheckMark]              = ImVec4(0.97f, 0.11f, 0.11f, 1.00f);
+        style.Colors[ImGuiCol_SliderGrab]             = ImVec4(0.67f, 0.14f, 0.14f, 1.00f);
+        style.Colors[ImGuiCol_SliderGrabActive]       = ImVec4(1.00f, 0.11f, 0.11f, 1.00f);
+        style.Colors[ImGuiCol_Button]                 = ImVec4(0.85f, 0.20f, 0.20f, 0.40f);
+        style.Colors[ImGuiCol_ButtonHovered]          = ImVec4(0.82f, 0.13f, 0.13f, 1.00f);
+        style.Colors[ImGuiCol_ButtonActive]           = ImVec4(0.98f, 0.06f, 0.06f, 1.00f);
+        style.Colors[ImGuiCol_Header]                 = ImVec4(0.85f, 0.18f, 0.37f, 0.31f);
+        style.Colors[ImGuiCol_HeaderHovered]          = ImVec4(0.77f, 0.15f, 0.22f, 0.80f);
+        style.Colors[ImGuiCol_HeaderActive]           = ImVec4(0.69f, 0.10f, 0.24f, 1.00f);
+        style.Colors[ImGuiCol_Separator]              = ImVec4(0.70f, 0.13f, 0.35f, 0.50f);
+        style.Colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.75f, 0.10f, 0.22f, 0.78f);
+        style.Colors[ImGuiCol_SeparatorActive]        = ImVec4(0.75f, 0.10f, 0.10f, 1.00f);
+        style.Colors[ImGuiCol_ResizeGrip]             = ImVec4(0.78f, 0.11f, 0.22f, 0.20f);
+        style.Colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.97f, 0.06f, 0.34f, 0.67f);
+        style.Colors[ImGuiCol_ResizeGripActive]       = ImVec4(1.00f, 0.00f, 0.00f, 0.95f);
+        style.Colors[ImGuiCol_Tab]                    = ImVec4(0.46f, 0.12f, 0.12f, 0.86f);
+        style.Colors[ImGuiCol_TabHovered]             = ImVec4(0.64f, 0.12f, 0.12f, 0.80f);
+        style.Colors[ImGuiCol_TabActive]              = ImVec4(0.77f, 0.15f, 0.15f, 1.00f);
+        style.Colors[ImGuiCol_TabUnfocused]           = ImVec4(0.54f, 0.13f, 0.13f, 0.97f);
+        style.Colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.51f, 0.13f, 0.13f, 1.00f);
+        style.Colors[ImGuiCol_DockingPreview]         = ImVec4(0.69f, 0.09f, 0.09f, 0.70f);
+        style.Colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.13f, 0.12f, 0.12f, 1.00f);
+        style.Colors[ImGuiCol_NavHighlight]           = ImVec4(0.98f, 0.26f, 0.26f, 1.00f);
+        style.Colors[ImGuiCol_MenuBarBg]              = ImVec4(0.29f, 0.03f, 0.03f, 1.00f);
 
         ImGui_ImplGlfw_InitForVulkan(m_context.window->m_glfw_window, true);
         ImGui_ImplVoksel_InitInfo init_info {};
@@ -407,7 +440,7 @@ namespace render {
 
     void Renderer::create_allocator() {
         VmaAllocatorCreateInfo allocatorCreateInfo = {};
-        allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+        allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_0;
         allocatorCreateInfo.physicalDevice = m_context.physical_device;
         allocatorCreateInfo.device = m_context.device;
         allocatorCreateInfo.instance = m_context.instance;
@@ -445,7 +478,7 @@ namespace render {
         render_pass_info.renderArea.extent = m_context.swapchain.m_extent;
 
         std::array clear_values = std::to_array<VkClearValue>({
-            { .color = { { 0.00143f, 0.35374f, 0.61868f, 1.0f } } },
+            { .color = { { m_fog_color.r, m_fog_color.g, m_fog_color.b, 1.0f } } },
             { .depthStencil = { 1.0f, 0 } }
         });
 
@@ -467,10 +500,11 @@ namespace render {
             scissor.extent = m_context.swapchain.m_extent;
             vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
+            entt::locator<render::SkyRenderer>::value().record(command_buffer, m_frame_index);
             entt::locator<render::ChunkRenderer>::value().record(command_buffer, m_frame_index);
             entt::locator<render::BoxRenderer>::value().record(command_buffer, m_frame_index);
             
-            ImGui::End();
+            ImGui::End(); // end the voksel window
             ImGui::Render();
             ImGui_ImplVoksel_RenderDrawData(ImGui::GetDrawData(), command_buffer);
         vkCmdEndRenderPass(command_buffer);

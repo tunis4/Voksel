@@ -409,8 +409,7 @@ bool ImGui_ImplVoksel_CreateFontsTexture()
         check_vk_result(err);
         memcpy(map, pixels, upload_size);
         vmaUnmapMemory(v->Context->allocator, bd->UploadBufferAllocation);
-        
-        // vmaFlushAllocation(v->Context->allocator, bd->UploadBufferAllocation, 0, upload_size);
+        vmaFlushAllocation(v->Context->allocator, bd->UploadBufferAllocation, 0, upload_size);
     }
 
     v->Context->transition_image_layout(bd->FontImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

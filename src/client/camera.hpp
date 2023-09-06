@@ -13,6 +13,8 @@ namespace client {
         static constexpr f32 slow_free_speed = normal_free_speed / 2;
         static constexpr f32 fast_free_speed = normal_free_speed * 2;
 
+        static constexpr f32 default_fov = 90;
+
         glm::vec3 m_pos;
         glm::vec3 m_front;
         glm::vec3 m_up;
@@ -35,7 +37,7 @@ namespace client {
         f32 m_last_x, m_last_y;
         bool m_first_mouse = true;
 
-        world::RayCastResult m_ray_cast {};
+        world::World::RayCastResult m_ray_cast {};
 
         explicit Camera(glm::vec3 position);
 

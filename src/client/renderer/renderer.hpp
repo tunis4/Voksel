@@ -34,7 +34,7 @@ namespace render {
 #endif
 
         void create_instance();
-        std::vector<const char*> get_required_extensions();
+        std::vector<const char*> get_instance_extensions();
         bool is_device_suitable(VkPhysicalDevice physical_device);
         void pick_physical_device();
         bool check_device_extension_support(VkPhysicalDevice physical_device);
@@ -51,6 +51,8 @@ namespace render {
 
     public:
         Context m_context;
+
+        glm::vec3 m_fog_color;
 
         void init(client::Window *window, client::Camera *camera);
         void begin_cleanup();

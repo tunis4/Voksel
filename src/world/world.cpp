@@ -4,6 +4,7 @@
 namespace world {
     World::World() {
         m_seed = 1337;
+        m_world_rng.seed(m_seed);
 
         m_simplex_noise = FastNoise::New<FastNoise::Simplex>();
 
@@ -31,7 +32,10 @@ namespace world {
 
     std::shared_ptr<Chunk> World::get_or_generate_chunk(glm::i32vec3 chunk_pos) {
         auto &chunk = m_chunks[chunk_pos];
-        if (!chunk) chunk = generate_chunk(chunk_pos);
+        if (!chunk) { 
+            chunk = generate_chunk(chunk_pos);
+            decorate_chunk(chunk_pos);
+        }
         return chunk;
     }
 
@@ -54,11 +58,10 @@ namespace world {
                 i32 height = std::floor(noise_output[z * Chunk::size + x] * 32.0f);
                 for (i32 y = 0; y < Chunk::size; y++) {
                     block::NID block = 0;
-                    if (world_y > 1) {
-                        if (world_y == height)
-                            block = 4;
-                        if (world_y == height - 1)
-                            block = 3;
+                    if (world_y > 1 && world_y == height) {
+                        block = 4;
+                    } else if (world_y > 0 && world_y == height - 1) {
+                        block = 3;
                     } else {
                         if (world_y == height || world_y == height - 1)
                             block = 7;
@@ -71,14 +74,14 @@ namespace world {
                         } else {
                             f32 cave_multiplier = 50.0f - 25.0f * std::clamp((world_y + 32.0f) / 64.0f, 0.0f, 1.0f);
                             f32 cave_density = (cave_noise_output[z * Chunk::size * Chunk::size + y * Chunk::size + x] + 1.0f) * cave_multiplier;
-                            if (world_y < height - 1 && cave_density < 75.0f) {
+                            if (world_y < height - 1 && cave_density < 75.0f)
                                 block = 1;
-                            } else if (cave_density >= 75.0f)
+                            else if (cave_density >= 75.0f)
                                 block = 0;
                         }
                     }
                     
-                    chunk->m_storage.set_block(util::coords_to_index<Chunk::size>(x, y, z), block);
+                    chunk->set_block_at(glm::i32vec3(x, y, z), block);
                     world_y++;
                 }
                 world_y -= Chunk::size;
@@ -91,6 +94,84 @@ namespace world {
         return chunk;
     }
 
+    // FIXME: the decoration phase sometimes causes lag spikes because it gets into a massive loop in the set_block_at function. 
+    // i should fix this by using a seperate set_block function that generates the adjacent chunks but doesnt decorate them  
+    void World::decorate_chunk(glm::i32vec3 chunk_pos) {
+        auto world_x = chunk_pos.x * Chunk::size;
+        auto world_y = chunk_pos.y * Chunk::size;
+        auto world_z = chunk_pos.z * Chunk::size;
+
+        std::array<f32, Chunk::area> noise_output;
+        m_max_smooth->GenUniformGrid2D(noise_output.data(), world_x, world_z, Chunk::size, Chunk::size, 0.005f, m_seed);
+        
+        std::uniform_int_distribution<> decorator_dist(1, 100);
+
+        for (i32 x = 0; x < Chunk::size; x++) {
+            for (i32 z = 0; z < Chunk::size; z++) {
+                i32 height = std::floor(noise_output[z * Chunk::size + x] * 32.0f);
+                for (i32 y = 0; y < Chunk::size; y++) {
+                    if (world_y > 2 && world_y == height + 1) {
+                        int decoration_roll = decorator_dist(m_world_rng);
+                        if (decoration_roll > 75) // generate grass
+                            set_block_at(glm::i32vec3(world_x, world_y, world_z), 11);
+                        if (decoration_roll == 75) // generate dandelions
+                            set_block_at(glm::i32vec3(world_x, world_y, world_z), 13);
+                        if (decoration_roll == 74) // generate roses
+                            set_block_at(glm::i32vec3(world_x, world_y, world_z), 14);
+                        if (decoration_roll == 73) { // generate tree
+                            int length_roll = decorator_dist(m_world_rng);
+                            int length = 5;
+                            if (length_roll > 50)
+                                length = 6;
+                            if (length_roll > 80)
+                                length = 7;
+
+                            // generate trunk
+                            for (int i = 0; i < length; i++)
+                                set_block_at(glm::i32vec3(world_x, world_y + i, world_z), 6);
+                            
+                            // generate leaves
+                            for (int i = -2; i < 3; i++) {
+                                for (int j = -2; j < 3; j++) {
+                                    if (i == 0 && j == 0) continue;
+                                    set_block_at(glm::i32vec3(world_x + i, world_y + length - 2, world_z + j), 12);
+                                }
+                            }
+                            for (int i = -2; i < 3; i++) {
+                                for (int j = -2; j < 3; j++) {
+                                    if (i == 0 && j == 0) continue;
+                                    if ((i == -2 && j == -2) || (i == 2 && j == -2) || (i == -2 && j == 2) || (i == 2 && j == 2))
+                                        if (decorator_dist(m_world_rng) > 25)
+                                            continue;
+                                    set_block_at(glm::i32vec3(world_x + i, world_y + length - 1, world_z + j), 12);
+                                }
+                            }
+                            for (int i = -1; i < 2; i++) {
+                                for (int j = -1; j < 2; j++) {
+                                    set_block_at(glm::i32vec3(world_x + i, world_y + length, world_z + j), 12);
+                                }
+                            }
+                            for (int i = -1; i < 2; i++) {
+                                for (int j = -1; j < 2; j++) {
+                                    if ((i == -1 && j == -1) || (i == 1 && j == -1) || (i == -1 && j == 1) || (i == 1 && j == 1))
+                                        if (decorator_dist(m_world_rng) > 25)
+                                            continue;
+                                    set_block_at(glm::i32vec3(world_x + i, world_y + length + 1, world_z + j), 12);
+                                }
+                            }
+                        }
+                    }
+                    
+                    world_y++;
+                }
+                world_y -= Chunk::size;
+                world_z++;
+            }
+            world_z -= Chunk::size;
+            world_x++;
+        }
+    }
+
     block::NID World::get_block_at(glm::i32vec3 pos) {
         auto [d, r] = util::signed_i32vec3_divide(pos, Chunk::size);
         return get_or_generate_chunk(d)->get_block_at(r);
@@ -101,16 +182,16 @@ namespace world {
         get_or_generate_chunk(d)->set_block_at(r, block_nid);
     }
 
-    RayCastResult World::cast_ray(glm::vec3 start_pos, glm::vec3 end_pos) {
+    World::RayCastResult World::cast_ray(glm::vec3 start_pos, glm::vec3 end_pos) {
         RayCastResult result {};
 
         glm::i32vec3 current_block_pos(glm::floor(start_pos));
         glm::i32vec3 last_block_pos(glm::floor(end_pos));
 
         glm::vec3 ray = glm::normalize(end_pos - start_pos);
+        
         glm::i32vec3 block_pos_step((ray.x >= 0) ? 1 : -1, (ray.y >= 0) ? 1 : -1, (ray.z >= 0) ? 1 : -1);
 
-        glm::vec3 next_block_boundary(current_block_pos + block_pos_step);
         glm::vec3 t_delta = glm::abs(1.0f / ray);
         glm::vec3 dist(
             (ray.x >= 0) ? (current_block_pos.x + 1 - start_pos.x) : (start_pos.x - current_block_pos.x),
@@ -143,7 +224,8 @@ namespace world {
                     stepped_index = 2;
                 }
             }
-            if (get_block_at(current_block_pos) != 0) {
+            block::NID current = get_block_at(current_block_pos);
+            if (current != 0) {
                 result.hit = true;
                 result.block_pos = current_block_pos;
                 if (stepped_index != -1)
@@ -155,5 +237,21 @@ namespace world {
         }
 
         return result;
+    }
+    
+    bool World::is_position_valid(glm::vec3 pos, glm::vec3 min_bounds, glm::vec3 max_bounds) {
+        glm::i32vec3 min_block_pos(glm::floor(min_bounds + pos));
+        glm::i32vec3 max_block_pos(glm::floor(max_bounds + pos));
+        for (i32 y = min_block_pos.y; y <= max_block_pos.y; y++) {
+            for (i32 x = min_block_pos.x; x <= max_block_pos.x; x++) {
+                for (i32 z = min_block_pos.z; z <= max_block_pos.z; z++) {
+                    block::NID current = get_block_at(glm::i32vec3(x, y, z));
+                    if (block::get_block_data(current)->m_collidable) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 }
