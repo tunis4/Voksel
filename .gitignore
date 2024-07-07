@@ -5,3 +5,5 @@
 /.cache/
 imgui.ini
 /x86_64-w64-mingw32.txt
+/vk_layer_settings.txt
+/worlds/
